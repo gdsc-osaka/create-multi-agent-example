@@ -55,6 +55,10 @@ deploy_agent "Escalation Policy Agent" \
   "agents/escalation_policy/agent.py" \
   "Applies AcmeDesk severity, SLA, escalation, and customer-communication policies over A2A."
 
+deploy_agent "Customer Communication Agent" \
+  "agents/customer_communication/agent.py" \
+  "Generates safe customer-facing support response packages over A2A."
+
 deploy_agent "Support Coordinator Agent" \
   "agents/coordinator/agent.py" \
   "Coordinates specialist A2A agents and produces Customer Support Escalation Briefs."

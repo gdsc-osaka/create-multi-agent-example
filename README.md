@@ -2,7 +2,7 @@
 
 This is the completed repository for the hands-on lab "ADK x A2A x Agent Runtime Customer Support Escalation Agent".
 
-The app models a B2B SaaS support workflow for AcmeDesk. A Support Coordinator Agent receives a customer support inquiry, delegates research to five specialist agents over A2A, and produces a Customer Support Escalation Brief for support operators.
+The app models a B2B SaaS support workflow for AcmeDesk. A Support Coordinator Agent receives a customer support inquiry, delegates research and response drafting to six specialist agents over A2A, and produces a Customer Support Escalation Brief for support operators.
 
 ## Architecture
 
@@ -12,10 +12,20 @@ Support Coordinator Agent
   |- Knowledge Base Agent       (A2A, port 8102)
   |- Account Context Agent      (A2A, port 8103)
   |- Incident Status Agent      (A2A, port 8104)
-  `- Escalation Policy Agent    (A2A, port 8105)
+  |- Escalation Policy Agent     (A2A, port 8105)
+  `- Customer Communication Agent (A2A, port 8106)
 ```
 
-Each specialist is an ADK agent exposed as an A2A Starlette app with `to_a2a()`. The coordinator consumes the specialists through `RemoteA2aAgent(use_legacy=False)` wrapped in `AgentTool`, so specialist findings return to the coordinator as tool results. The specialists are intentionally not registered as `sub_agents`, because `sub_agents` enables `transfer_to_agent(...)` and can hand the conversation off to a single specialist instead of aggregating all findings. The coordinator also has no local "build full brief" shortcut tool, so ADK Web is forced to call the five A2A specialist tools before synthesizing the final brief.
+Each specialist is an ADK agent exposed as an A2A Starlette app with `to_a2a()`.
+The coordinator is a `SequentialAgent` that consumes the specialists through
+`RemoteA2aAgent(use_legacy=False)` entries in `sub_agents`. Its first step is a
+`ParallelAgent` that runs the ticket history, knowledge base, account context,
+incident status, and escalation policy specialists concurrently instead of
+exposing `transfer_to_agent(...)` choices from a coordinator LLM agent. After the
+parallel research and policy step completes, a local coordinator synthesis agent
+creates the support brief, the customer communication A2A agent drafts the
+customer-facing response package, and a final coordinator synthesis agent
+produces the final brief.
 
 For deterministic workshop checks, the shared `acmedesk_support` package also exposes local search and brief-building functions. The CLI sample cases use those functions so they can run without calling an LLM. That deterministic path is not registered as a coordinator ADK tool.
 
@@ -36,7 +46,7 @@ Dependencies are managed with `uv` from `pyproject.toml` and `uv.lock`. Do not i
 
 ## Run locally
 
-Start the five specialist A2A services:
+Start the six specialist A2A services:
 
 ```bash
 make run-specialists
@@ -56,6 +66,7 @@ http://localhost:8102/.well-known/agent-card.json
 http://localhost:8103/.well-known/agent-card.json
 http://localhost:8104/.well-known/agent-card.json
 http://localhost:8105/.well-known/agent-card.json
+http://localhost:8106/.well-known/agent-card.json
 http://localhost:8100/.well-known/agent-card.json
 ```
 

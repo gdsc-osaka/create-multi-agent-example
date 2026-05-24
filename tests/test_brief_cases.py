@@ -11,6 +11,7 @@ REQUIRED_SECTIONS = [
     "## Severity Recommendation",
     "## Escalation Decision",
     "## Draft Customer Response",
+    "## Customer Response Package",
     "## Internal Escalation Note",
 ]
 

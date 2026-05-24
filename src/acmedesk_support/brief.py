@@ -3,11 +3,11 @@ from __future__ import annotations
 from typing import Any
 
 from acmedesk_support.accounts import get_account_context
+from acmedesk_support.communication import generate_customer_response_package
 from acmedesk_support.incidents import correlate_incidents
 from acmedesk_support.intake import parse_case
 from acmedesk_support.knowledge import search_knowledge_base
 from acmedesk_support.policy import recommend_escalation
-from acmedesk_support.redaction import redact_customer_text
 from acmedesk_support.tickets import search_ticket_history
 
 
@@ -19,16 +19,38 @@ def build_escalation_brief(query: str) -> str:
     incidents = correlate_incidents(query, limit=3)
     recommendation = recommend_escalation(query)
 
+    case_summary = _case_summary(query, intake)
+    account_context = _account_context(account)
+    historical_tickets = _historical_tickets(tickets)
+    knowledge_refs = _knowledge_refs(knowledge)
+    incident_correlation = _incident_correlation(incidents)
+    severity_recommendation = _severity_recommendation(recommendation)
+    escalation_decision = _escalation_decision(recommendation)
+    communication_source = "\n\n".join(
+        [
+            "# Customer Support Escalation Brief",
+            case_summary,
+            account_context,
+            historical_tickets,
+            knowledge_refs,
+            incident_correlation,
+            severity_recommendation,
+            escalation_decision,
+        ]
+    )
+    response_package = generate_customer_response_package(communication_source)
+
     sections = [
         "# Customer Support Escalation Brief",
-        _case_summary(query, intake),
-        _account_context(account),
-        _historical_tickets(tickets),
-        _knowledge_refs(knowledge),
-        _incident_correlation(incidents),
-        _severity_recommendation(recommendation),
-        _escalation_decision(recommendation),
-        _draft_customer_response(intake, incidents, recommendation),
+        case_summary,
+        account_context,
+        historical_tickets,
+        knowledge_refs,
+        incident_correlation,
+        severity_recommendation,
+        escalation_decision,
+        _draft_customer_response(response_package),
+        _customer_response_package(response_package),
         _internal_escalation_note(intake, account, tickets, incidents, recommendation),
     ]
     return "\n\n".join(sections).strip() + "\n"
@@ -165,31 +187,36 @@ def _escalation_decision(recommendation: dict[str, Any]) -> str:
     )
 
 
-def _draft_customer_response(
-    intake: Any, incidents: dict[str, Any], recommendation: dict[str, Any]
-) -> str:
-    next_update = (recommendation["sla"] or {}).get(
-        "update_frequency", "the next agreed update window"
-    )
-    incident_sentence = (
-        "We are also checking whether this is related to an active AcmeDesk service issue."
-        if incidents["likely_related"]
-        else "We are checking both customer-specific configuration and AcmeDesk service health."
-    )
-    response = "\n".join(
+def _draft_customer_response(response_package: dict[str, Any]) -> str:
+    return "\n".join(
         [
             "## Draft Customer Response",
-            "Hello,",
+            f"Subject: {response_package['subject']}",
             "",
-            f"Thank you for reporting this. We understand the impact as: {intake.impact_scope}",
-            incident_sentence,
-            "We are treating this as "
-            f"{recommendation['severity']} while we complete the initial investigation.",
-            f"Could you share: {', '.join(recommendation['additional_info_needed'])}?",
-            f"We will follow up within {next_update} or sooner if we confirm a mitigation.",
+            response_package["customer_response"],
         ]
     )
-    return redact_customer_text(response)
+
+
+def _customer_response_package(response_package: dict[str, Any]) -> str:
+    disclosure = response_package["disclosure_check"]
+    review = "Yes" if response_package["requires_human_review"] else "No"
+    safe_to_send = "Yes" if disclosure["safe_to_send"] else "No"
+    softened = "Yes" if disclosure["omitted_or_softened"] else "No"
+    reasons = ", ".join(response_package["human_review_reason"]) or "None"
+    assumptions = "; ".join(response_package["assumptions"]) or "None"
+    return "\n".join(
+        [
+            "## Customer Response Package",
+            f"- Subject: {response_package['subject']}",
+            f"- Summary for agent: {response_package['summary_for_agent']}",
+            f"- Disclosure safe to send: {safe_to_send}",
+            f"- Omitted or softened internal details: {softened}",
+            f"- Requires human review: {review}",
+            f"- Human review reason: {reasons}",
+            f"- Assumptions: {assumptions}",
+        ]
+    )
 
 
 def _internal_escalation_note(
