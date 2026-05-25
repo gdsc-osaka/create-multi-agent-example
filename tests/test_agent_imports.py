@@ -66,11 +66,6 @@ def test_adk_agent_entrypoints_import_when_dependencies_exist() -> None:
         "parallel_investigation_join",
         "build_synthesis_input",
         "synthesis_hypothesis_agent",
-        "store_synthesis_brief",
-        "build_escalation_policy_input",
-        "escalation_policy_agent",
-        "build_customer_communication_input",
-        "customer_communication_agent",
         "build_final_package_input",
         "support_case_resolution_package_agent",
     } <= resolution_node_names
@@ -91,9 +86,8 @@ def test_adk_agent_entrypoints_import_when_dependencies_exist() -> None:
         ("knowledge_base_agent", "parallel_investigation_join", None),
         ("diagnostics_agent", "parallel_investigation_join", None),
         ("parallel_investigation_join", "build_synthesis_input", None),
-        ("synthesis_hypothesis_agent", "store_synthesis_brief", None),
-        ("escalation_policy_agent", "build_customer_communication_input", None),
-        ("customer_communication_agent", "build_final_package_input", None),
+        ("synthesis_hypothesis_agent", "build_final_package_input", None),
+        ("build_final_package_input", "support_case_resolution_package_agent", None),
     } <= resolution_edges
 
 
@@ -162,3 +156,100 @@ def test_coordinator_retry_route_requests_human_input() -> None:
         ],
     }
     assert request.response_schema is str
+
+
+def test_coordinator_final_input_applies_deterministic_policy_and_communication() -> None:
+    pytest.importorskip("google.adk")
+
+    from agents.coordinator.agent import (
+        STATE_ESCALATION_POLICY,
+        STATE_INVESTIGATION_PLAN,
+        STATE_SYNTHESIS_BRIEF,
+        build_final_package_input,
+    )
+
+    ctx = SimpleNamespace(
+        invocation_id="test-invocation",
+        state={
+            STATE_INVESTIGATION_PLAN: {
+                "case_category": "authentication",
+                "urgency": "high",
+                "business_impact": "all employees cannot log in",
+            }
+        },
+        session=SimpleNamespace(
+            events=[
+                SimpleNamespace(
+                    invocation_id="test-invocation",
+                    author="user",
+                    content=SimpleNamespace(
+                        parts=[
+                            SimpleNamespace(
+                                text=(
+                                    "Contoso reports all employees cannot log in with SAML SSO "
+                                    "after an IdP certificate rotation."
+                                )
+                            )
+                        ]
+                    ),
+                )
+            ]
+        ),
+    )
+
+    result = build_final_package_input(ctx, "Synthesis: broad SSO impact after IdP change.")
+
+    assert ctx.state[STATE_SYNTHESIS_BRIEF] == (
+        "Synthesis: broad SSO impact after IdP change."
+    )
+    assert ctx.state[STATE_ESCALATION_POLICY]["severity"] == "SEV2"
+    assert "## Escalation Policy Check" in result
+    assert "## Customer Communication Draft" in result
+    assert "support_case_resolution_package_agent" not in result
+
+
+def test_coordinator_final_input_preserves_japanese_output_language() -> None:
+    pytest.importorskip("google.adk")
+
+    from agents.coordinator.agent import (
+        STATE_INVESTIGATION_PLAN,
+        build_final_package_input,
+    )
+
+    ctx = SimpleNamespace(
+        invocation_id="test-invocation",
+        state={
+            STATE_INVESTIGATION_PLAN: {
+                "case_category": "authentication",
+                "urgency": "high",
+                "business_impact": "全社員がログインできない",
+            }
+        },
+        session=SimpleNamespace(
+            events=[
+                SimpleNamespace(
+                    invocation_id="test-invocation",
+                    author="user",
+                    content=SimpleNamespace(
+                        parts=[
+                            SimpleNamespace(
+                                text=(
+                                    "ContosoでIdP証明書を更新した後、全社員がSAML SSOで"
+                                    "ログインできません。"
+                                )
+                            )
+                        ]
+                    ),
+                )
+            ]
+        ),
+    )
+
+    result = build_final_package_input(ctx, "仮説: IdPメタデータの不整合が疑われます。")
+
+    assert "Output language requirement:" in result
+    assert (
+        "Write the final response in the same language as the Customer inquiry "
+        "and session context."
+    ) in result
+    assert "Translate or rewrite English intermediate text as needed." in result

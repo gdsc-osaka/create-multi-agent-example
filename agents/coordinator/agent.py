@@ -10,6 +10,8 @@ from google.adk.events.event import Event
 from google.adk.workflow import DEFAULT_ROUTE, JoinNode
 from pydantic import BaseModel, Field
 
+from acmedesk_support.communication import generate_customer_response_package
+from acmedesk_support.policy import recommend_escalation
 from agents._common import build_a2a_app, model_name, runtime_a2a_httpx_client, specialist_card_url
 
 ROUTE_RETRY = "retry"
@@ -185,48 +187,115 @@ def build_synthesis_input(ctx: Context, node_input: Any) -> str:
     )
 
 
-def store_synthesis_brief(ctx: Context, node_input: Any) -> str:
-    synthesis = _stringify(node_input)
-    ctx.state[STATE_SYNTHESIS_BRIEF] = synthesis
-    return synthesis
+def _planned_value(ctx: Context, field_name: str, default: str = "Unknown") -> str:
+    plan = ctx.state.get(STATE_INVESTIGATION_PLAN, {})
+    if not isinstance(plan, dict):
+        return default
+    value = plan.get(field_name)
+    return _stringify(value) or default
 
 
-def build_escalation_policy_input(ctx: Context, node_input: Any) -> str:
-    customer_messages = "\n\n".join(_session_user_messages(ctx))
+def _format_escalation_policy(policy: dict[str, Any]) -> str:
+    sla = policy.get("sla") or {}
     return "\n\n".join(
         [
-            "Customer inquiry and session context:",
-            customer_messages,
-            "Synthesis / hypothesis update:",
-            _stringify(node_input),
-            "Apply escalation policy to the synthesized case.",
+            "## Escalation Policy Check",
+            "\n".join(
+                [
+                    f"- Recommended severity: {policy.get('severity', 'Unknown')}",
+                    f"- Reasoning: {policy.get('severity_reason', 'Unknown')}",
+                    f"- SLA response deadline: {sla.get('first_response', 'Unknown')}",
+                    f"- SLA update frequency: {sla.get('update_frequency', 'Unknown')}",
+                    f"- Escalate: {'Yes' if policy.get('should_escalate') else 'No'}",
+                    f"- Recommended team: {policy.get('team', 'Unknown')}",
+                    f"- Escalation reason: {policy.get('reason', 'Unknown')}",
+                    f"- Attach: {', '.join(policy.get('attach', [])) or 'None'}",
+                    "- Additional information needed: "
+                    f"{', '.join(policy.get('additional_info_needed', [])) or 'None'}",
+                    "- Customer-safe constraints: "
+                    f"{'; '.join(policy.get('customer_safe_constraints', [])) or 'None'}",
+                ]
+            ),
         ]
     )
 
 
-def build_customer_communication_input(ctx: Context, node_input: Any) -> str:
-    escalation_policy = _stringify(node_input)
-    ctx.state[STATE_ESCALATION_POLICY] = escalation_policy
+def _format_customer_communication(response_package: dict[str, Any]) -> str:
+    disclosure = response_package.get("disclosure_check", {})
     return "\n\n".join(
         [
-            "Synthesis / hypothesis update:",
-            str(ctx.state.get(STATE_SYNTHESIS_BRIEF, "")),
-            "Escalation policy check:",
-            escalation_policy,
-            "Draft a customer-safe response package from these approved facts.",
+            "## Customer Communication Draft",
+            "\n".join(
+                [
+                    f"Subject: {response_package.get('subject', 'Update on your support case')}",
+                    "",
+                    _stringify(response_package.get("customer_response", "")),
+                ]
+            ),
+            "## Customer Communication Safety Check",
+            "\n".join(
+                [
+                    "- Disclosure safe to send: "
+                    f"{'Yes' if disclosure.get('safe_to_send') else 'No'}",
+                    "- Omitted or softened internal details: "
+                    f"{'Yes' if disclosure.get('omitted_or_softened') else 'No'}",
+                    "- Requires human review: "
+                    f"{'Yes' if response_package.get('requires_human_review') else 'No'}",
+                    "- Human review reason: "
+                    f"{', '.join(response_package.get('human_review_reason', [])) or 'None'}",
+                    "- Assumptions: "
+                    f"{'; '.join(response_package.get('assumptions', [])) or 'None'}",
+                ]
+            ),
         ]
     )
 
 
 def build_final_package_input(ctx: Context, node_input: Any) -> str:
+    customer_messages = "\n\n".join(_session_user_messages(ctx))
+    synthesis = _stringify(node_input)
+    policy = recommend_escalation("\n\n".join([customer_messages, synthesis]))
+    ctx.state[STATE_SYNTHESIS_BRIEF] = synthesis
+    ctx.state[STATE_ESCALATION_POLICY] = policy
+
+    policy_text = _format_escalation_policy(policy)
+    communication_source = "\n\n".join(
+        [
+            "# Coordinator Support Brief",
+            "## Case Summary",
+            "\n".join(
+                [
+                    f"- Inquiry summary: {customer_messages}",
+                    f"- Impact scope: {_planned_value(ctx, 'business_impact')}",
+                    f"- Problem category: {_planned_value(ctx, 'case_category')}",
+                    f"- Initial urgency: {_planned_value(ctx, 'urgency')}",
+                ]
+            ),
+            "## Synthesis / Hypothesis Update",
+            synthesis,
+            policy_text,
+        ]
+    )
+    response_package = generate_customer_response_package(communication_source)
+
     return "\n\n".join(
         [
+            "Output language requirement:",
+            (
+                "Write the final response in the same language as the Customer inquiry "
+                "and session context. Apply this to section headings, summaries, the "
+                "customer communication draft, clarification questions, and internal next "
+                "steps. Translate or rewrite English intermediate text as needed. Keep "
+                "product names, severity codes, SLA values, IDs, and team names unchanged."
+            ),
+            "Customer inquiry and session context:",
+            customer_messages,
             "Synthesis / hypothesis update:",
-            str(ctx.state.get(STATE_SYNTHESIS_BRIEF, "")),
+            synthesis,
             "Escalation policy check:",
-            str(ctx.state.get(STATE_ESCALATION_POLICY, "")),
+            policy_text,
             "Customer communication draft:",
-            _stringify(node_input),
+            _format_customer_communication(response_package),
         ]
     )
 
@@ -287,21 +356,6 @@ diagnostics_agent = RemoteA2aAgent(
     description="Suggests diagnostic checks, evidence gaps, and next troubleshooting probes.",
     use_legacy=False,
 )
-escalation_policy_agent = RemoteA2aAgent(
-    name="escalation_policy_agent",
-    agent_card=specialist_card_url("ESCALATION_POLICY_A2A_URL", "http://localhost:8105"),
-    httpx_client=_remote_a2a_httpx_client,
-    description="Recommends severity, SLA deadline, escalation target, and safe wording.",
-    use_legacy=False,
-)
-customer_communication_agent = RemoteA2aAgent(
-    name="customer_communication_agent",
-    agent_card=specialist_card_url("CUSTOMER_COMMUNICATION_A2A_URL", "http://localhost:8106"),
-    httpx_client=_remote_a2a_httpx_client,
-    description="Generates safe customer-facing response packages from structured briefs.",
-    use_legacy=False,
-)
-
 parallel_investigation_join = JoinNode(name="parallel_investigation_join")
 
 synthesis_hypothesis_agent = Agent(
@@ -325,6 +379,9 @@ final_package_agent = Agent(
     instruction=(
         "You are the Support Case Resolution Package Agent for AcmeDesk. "
         "Combine the synthesis, escalation policy check, and customer communication draft. "
+        "Follow the Output language requirement in the input. Do not default to English "
+        "just because intermediate evidence or templates are in English. Preserve product "
+        "names, severity codes, SLA values, IDs, and team names. "
         "Produce the final package with these sections: Case Summary, Triage / Planning, "
         "Parallel Investigation Findings, Hypothesis Update, Escalation Policy Check, "
         "Customer Communication Draft, Clarification Questions, and Internal Next Steps. "
@@ -347,11 +404,6 @@ support_resolution_workflow = Workflow(
             parallel_investigation_join,
             build_synthesis_input,
             synthesis_hypothesis_agent,
-            store_synthesis_brief,
-            build_escalation_policy_input,
-            escalation_policy_agent,
-            build_customer_communication_input,
-            customer_communication_agent,
             build_final_package_input,
             final_package_agent,
         ),

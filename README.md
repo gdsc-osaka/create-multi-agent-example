@@ -12,24 +12,30 @@ Support Coordinator Agent
   |- Knowledge Base Agent        (A2A, port 8102)
   |- Account Context Agent       (A2A, port 8103)
   |- Incident Status Agent       (A2A, port 8104)
-  |- Escalation Policy Agent     (A2A, port 8105)
-  |- Customer Communication Agent (A2A, port 8106)
   `- Diagnostics Agent           (A2A, port 8107)
+
+Standalone A2A entrypoints
+  |- Escalation Policy Agent     (A2A, port 8105)
+  `- Customer Communication Agent (A2A, port 8106)
 ```
 
 Each specialist is an ADK agent exposed as an A2A Starlette app with `to_a2a()`.
 The coordinator is a graph-based `Workflow` that keeps the case flow generic:
 Triage / Planning, Parallel Investigation, Synthesis / Hypothesis Update,
-Escalation Policy Check, Customer Communication Draft, and Final Package
-Generation. The planning step returns a structured investigation plan, then a
-Python router emits `retry` or `DEFAULT_ROUTE`: `retry` requests clarification
-with ADK human-in-the-loop input before returning to planning, and `DEFAULT_ROUTE`
-enters the support case resolution workflow.
+and Final Package Generation. The planning step returns a structured
+investigation plan, then a Python router emits `retry` or `DEFAULT_ROUTE`:
+`retry` requests clarification with ADK human-in-the-loop input before returning
+to planning, and `DEFAULT_ROUTE` enters the support case resolution workflow.
 The planning and synthesis steps are LLM agents, so routing and hypothesis
 updates are not hard-coded to authentication, billing, or any other single
 domain. The parallel investigation stage fans out to Account Context, Ticket
 History, Incident Status, Knowledge Base, and Diagnostics agents; the
 LLM-provided plan tells each specialist what to focus on for the current case.
+After synthesis, the coordinator applies the shared deterministic escalation
+policy and customer-communication helpers locally, then passes those checked
+outputs into the final package agent. This keeps the graph focused on the
+actual orchestration boundary instead of modeling every formatting step as its
+own node.
 
 For deterministic workshop checks, the shared `acmedesk_support` package also exposes local search and brief-building functions. The CLI sample cases use those functions so they can run without calling an LLM. That deterministic path is not registered as a coordinator ADK tool.
 
@@ -50,7 +56,7 @@ Dependencies are managed with `uv` from `pyproject.toml` and `uv.lock`. Do not i
 
 ## Run locally
 
-Start the seven specialist A2A services:
+Start the local A2A services:
 
 ```bash
 make run-specialists
