@@ -114,15 +114,14 @@ def test_coordinator_retry_route_requests_human_input() -> None:
 
     from google.adk.events import RequestInput
 
-    from agents.coordinator.agent import (
+    from agents.coordinator.constants import (
         ROUTE_RETRY,
         STATE_CLARIFICATION_QUESTIONS,
         STATE_CLARIFICATION_REQUEST,
         STATE_INVESTIGATION_PLAN,
-        InvestigationPlan,
-        request_retry_clarification,
-        route_investigation_plan,
     )
+    from agents.coordinator.schemas import InvestigationPlan
+    from agents.coordinator.steps import request_retry_clarification, route_investigation_plan
 
     ctx = SimpleNamespace(state={})
     plan = InvestigationPlan(
@@ -161,12 +160,12 @@ def test_coordinator_retry_route_requests_human_input() -> None:
 def test_coordinator_final_input_applies_deterministic_policy_and_communication() -> None:
     pytest.importorskip("google.adk")
 
-    from agents.coordinator.agent import (
+    from agents.coordinator.constants import (
         STATE_ESCALATION_POLICY,
         STATE_INVESTIGATION_PLAN,
         STATE_SYNTHESIS_BRIEF,
-        build_final_package_input,
     )
+    from agents.coordinator.steps import build_final_package_input
 
     ctx = SimpleNamespace(
         invocation_id="test-invocation",
@@ -211,10 +210,10 @@ def test_coordinator_final_input_applies_deterministic_policy_and_communication(
 def test_coordinator_final_input_preserves_japanese_output_language() -> None:
     pytest.importorskip("google.adk")
 
-    from agents.coordinator.agent import (
+    from agents.coordinator.constants import (
         STATE_INVESTIGATION_PLAN,
-        build_final_package_input,
     )
+    from agents.coordinator.steps import build_final_package_input
 
     ctx = SimpleNamespace(
         invocation_id="test-invocation",
