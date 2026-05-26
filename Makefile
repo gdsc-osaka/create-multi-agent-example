@@ -1,7 +1,7 @@
 UV ?= uv
 UV_RUN := $(UV) run
 
-.PHONY: setup lock lint test run-specialists run-coordinator case-a case-b case-c deploy-all clean
+.PHONY: setup lock lint test run run-specialists run-coordinator case-a case-b case-c deploy-all web clean
 
 setup:
 	$(UV) sync --extra dev
@@ -14,6 +14,15 @@ lint:
 
 test:
 	$(UV_RUN) --extra dev pytest
+
+run:
+	@set -e; \
+	trap 'for job in $$(jobs -p); do kill "$$job" 2>/dev/null || true; done' INT TERM EXIT; \
+	$(MAKE) --no-print-directory run-specialists & \
+	$(MAKE) --no-print-directory run-coordinator & \
+	$(MAKE) --no-print-directory web & \
+	echo "Specialists, coordinator, and ADK Web are starting."; \
+	wait
 
 run-specialists:
 	@set -e; \
