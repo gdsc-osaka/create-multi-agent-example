@@ -35,7 +35,7 @@ UV_BIN="${UV_BIN:-uv}"
 LOG_DIR="${REPO_ROOT}/.agent-runtime-temp"
 DEPLOY_WORK_DIR="${LOG_DIR}/deploy-work"
 REQ_FILE="${LOG_DIR}/requirements.txt"
-TRACE_TO_CLOUD="${TRACE_TO_CLOUD:-${ACMEDESK_TRACE_TO_CLOUD:-false}}"
+TRACE_TO_CLOUD="${TRACE_TO_CLOUD:-${HIRENEST_TRACE_TO_CLOUD:-false}}"
 A2A_ENV_NAMES=(
   TICKET_HISTORY_A2A_URL
   KNOWLEDGE_BASE_A2A_URL
@@ -212,15 +212,15 @@ info "Exporting requirements..."
 # in spec.deployment_spec.env is rejected.
 DEPLOY_ENV_FILE="${LOG_DIR}/deploy.env"
 if [[ -f "${REPO_ROOT}/.env" ]]; then
-  grep -v -E '^[[:space:]]*(GOOGLE_API_KEY|GOOGLE_GENAI_USE_VERTEXAI|GOOGLE_CLOUD_PROJECT|GOOGLE_CLOUD_LOCATION|GOOGLE_CLOUD_REGION|TRACE_TO_CLOUD|ACMEDESK_TRACE_TO_CLOUD|[A-Z_]+_A2A_URL)[[:space:]]*=' \
+  grep -v -E '^[[:space:]]*(GOOGLE_API_KEY|GOOGLE_GENAI_USE_VERTEXAI|GOOGLE_CLOUD_PROJECT|GOOGLE_CLOUD_LOCATION|GOOGLE_CLOUD_REGION|TRACE_TO_CLOUD|HIRENEST_TRACE_TO_CLOUD|[A-Z_]+_A2A_URL)[[:space:]]*=' \
     "${REPO_ROOT}/.env" > "${DEPLOY_ENV_FILE}" || true
 else
   : > "${DEPLOY_ENV_FILE}"
 fi
 echo "GOOGLE_GENAI_USE_VERTEXAI=true" >> "${DEPLOY_ENV_FILE}"
-echo "ACMEDESK_A2A_USE_ADC_AUTH=true" >> "${DEPLOY_ENV_FILE}"
+echo "HIRENEST_A2A_USE_ADC_AUTH=true" >> "${DEPLOY_ENV_FILE}"
 if is_truthy "${TRACE_TO_CLOUD}"; then
-  echo "ACMEDESK_TRACE_TO_CLOUD=true" >> "${DEPLOY_ENV_FILE}"
+  echo "HIRENEST_TRACE_TO_CLOUD=true" >> "${DEPLOY_ENV_FILE}"
 fi
 
 slugify() {

@@ -133,7 +133,7 @@ export GOOGLE_GENAI_USE_VERTEXAI=true
 ```
 
 `GOOGLE_GENAI_USE_VERTEXAI` is the current google-genai switch for using the Agent Platform backend.
-Set `TRACE_TO_CLOUD=true` or `ACMEDESK_TRACE_TO_CLOUD=true` before deployment to enable Cloud Trace.
+Set `TRACE_TO_CLOUD=true` or `HIRENEST_TRACE_TO_CLOUD=true` before deployment to enable Cloud Trace.
 
 Deploy every agent:
 

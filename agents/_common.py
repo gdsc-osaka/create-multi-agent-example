@@ -30,7 +30,7 @@ def env_bool(name: str) -> bool:
 
 def maybe_enable_cloud_trace() -> None:
     global _CLOUD_TRACE_ENABLED
-    if _CLOUD_TRACE_ENABLED or not env_bool("ACMEDESK_TRACE_TO_CLOUD"):
+    if _CLOUD_TRACE_ENABLED or not env_bool("HIRENEST_TRACE_TO_CLOUD"):
         return
 
     try:
@@ -93,7 +93,7 @@ class GoogleCloudAuth(httpx.Auth):
 
 
 def runtime_a2a_httpx_client() -> httpx.AsyncClient | None:
-    if not env_bool("ACMEDESK_A2A_USE_ADC_AUTH"):
+    if not env_bool("HIRENEST_A2A_USE_ADC_AUTH"):
         return None
     return httpx.AsyncClient(auth=GoogleCloudAuth(), timeout=httpx.Timeout(timeout=60.0))
 
