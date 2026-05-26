@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-This is a Python 3.11 ADK/A2A customer support escalation example. Core deterministic logic lives in `src/acmedesk_support/`, including ticket search, account context, incident status, policy lookup, redaction, and brief generation. ADK agent entrypoints live in `agents/`, with one package per specialist plus `agents/coordinator/`. Fictional support corpora and policy fixtures live in `data/`, grouped by domain such as `tickets/`, `accounts/`, `incidents/`, `knowledge_base/`, and `policies/`. Helper scripts are in `scripts/`, and tests are in `tests/`.
+This is a Python 3.11 ADK/A2A customer support escalation example. Core deterministic logic lives in `src/hirenest_support/`, including ticket search, account context, incident status, policy lookup, redaction, and brief generation. ADK agent entrypoints live in `agents/`, with one package per specialist plus `agents/coordinator/`. Fictional support corpora and policy fixtures live in `data/`, grouped by domain such as `tickets/`, `accounts/`, `incidents/`, `knowledge_base/`, and `policies/`. Helper scripts are in `scripts/`, and tests are in `tests/`.
 
 ## Build, Test, and Development Commands
 
@@ -18,7 +18,7 @@ Use `uv` through the Makefile; dependencies are pinned in `pyproject.toml` and `
 
 ## Coding Style & Naming Conventions
 
-Follow the existing Python style: 4-space indentation, type hints where useful, small pure functions in `src/acmedesk_support/`, and explicit agent wiring in `agents/*/agent.py`. Ruff targets Python 3.11 with a 100-character line length and rules `E`, `F`, `I`, `UP`, and `B`; run `make lint` before submitting. Use snake_case for modules, functions, variables, and test names. Keep fixture names descriptive, for example `2026-q1-authentication.jsonl` or `auth-service-runbook.md`.
+Follow the existing Python style: 4-space indentation, type hints where useful, small pure functions in `src/hirenest_support/`, and explicit agent wiring in `agents/*/agent.py`. Ruff targets Python 3.11 with a 100-character line length and rules `E`, `F`, `I`, `UP`, and `B`; run `make lint` before submitting. Use snake_case for modules, functions, variables, and test names. Keep fixture names descriptive, for example `2026-q1-authentication.jsonl` or `auth-service-runbook.md`.
 
 ## Testing Guidelines
 

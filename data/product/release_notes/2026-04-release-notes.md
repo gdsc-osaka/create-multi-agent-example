@@ -1,5 +1,5 @@
-# April 2026 Release Notes
+# 2026-04 Release Notes
 
-- Updated authentication cache failover behavior.
-- Improved dashboard query planner for saved filters.
-- Added billing seat audit export beta for Business and Enterprise plans.
+- Added Google Calendar reconnect health signals.
+- Improved interview invitation delivery event search.
+- Added public job page cache purge controls.

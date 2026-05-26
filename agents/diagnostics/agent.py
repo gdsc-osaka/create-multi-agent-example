@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from google.adk import Agent
 
-from acmedesk_support.diagnostics import recommend_diagnostics
 from agents._common import build_a2a_app, model_name
+from hirenest_support.diagnostics import recommend_diagnostics
 
 
 def recommend_case_diagnostics(inquiry: str) -> dict:
@@ -16,7 +16,7 @@ root_agent = Agent(
     model=model_name(),
     description="Recommends diagnostic checks, evidence gaps, and next troubleshooting probes.",
     instruction=(
-        "You are the Diagnostics Agent for AcmeDesk Support. "
+        "You are the Diagnostics Agent for HireNest ATS Support. "
         "Use recommend_case_diagnostics for every request. Return diagnostic focus, evidence "
         "to collect, clarification questions, and customer-safe next diagnostic steps. "
         "Do not decide severity or write the final customer response."

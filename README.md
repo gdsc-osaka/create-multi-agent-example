@@ -1,8 +1,8 @@
-# AcmeDesk Customer Support Escalation Agent
+# HireNest Customer Support Escalation Agent
 
 This is the completed repository for the hands-on lab "ADK x A2A x Agent Runtime Customer Support Escalation Agent".
 
-The app models a B2B SaaS support workflow for AcmeDesk. A Support Coordinator Agent receives a customer support inquiry, runs a generic resolution workflow over specialist agents, and produces a Support Case Resolution Package for support operators.
+The app models a B2B SaaS support workflow for HireNest ATS, an applicant tracking system for candidate pipelines, public job pages, interview scheduling, scorecards, offers, and recruiting analytics. A Support Coordinator Agent receives a customer support inquiry, runs a generic resolution workflow over specialist agents, and produces a Support Case Resolution Package for support operators.
 
 ## Architecture
 
@@ -12,10 +12,10 @@ Support Coordinator Agent
   |- Knowledge Base Agent        (A2A, port 8102)
   |- Account Context Agent       (A2A, port 8103)
   |- Incident Status Agent       (A2A, port 8104)
+  |- Escalation Policy Agent     (A2A, port 8105)
   `- Diagnostics Agent           (A2A, port 8107)
 
 Standalone A2A entrypoints
-  |- Escalation Policy Agent     (A2A, port 8105)
   `- Customer Communication Agent (A2A, port 8106)
 ```
 
@@ -27,17 +27,18 @@ investigation plan, then a Python router emits `retry` or `DEFAULT_ROUTE`:
 `retry` requests clarification with ADK human-in-the-loop input before returning
 to planning, and `DEFAULT_ROUTE` enters the support case resolution workflow.
 The planning and synthesis steps are LLM agents, so routing and hypothesis
-updates are not hard-coded to authentication, billing, or any other single
-domain. The parallel investigation stage fans out to Account Context, Ticket
+updates are not hard-coded to candidate email, calendar sync, job pages, or any
+other single domain. The parallel investigation stage fans out to Account Context, Ticket
 History, Incident Status, Knowledge Base, and Diagnostics agents; the
 LLM-provided plan tells each specialist what to focus on for the current case.
-After synthesis, the coordinator applies the shared deterministic escalation
-policy and customer-communication helpers locally, then passes those checked
-outputs into the final package agent. This keeps the graph focused on the
-actual orchestration boundary instead of modeling every formatting step as its
-own node.
+After synthesis, the coordinator calls the Escalation Policy Agent over A2A to
+apply severity, SLA, owner-team, escalation, and Discord notification policy.
+It then combines that policy result with a deterministic customer-communication
+safety draft before passing the package input to the final package agent. This
+keeps the graph focused on the orchestration boundary while still making
+escalation policy a real specialist-agent handoff.
 
-For deterministic workshop checks, the shared `acmedesk_support` package also exposes local search and brief-building functions. The CLI sample cases use those functions so they can run without calling an LLM. That deterministic path is not registered as a coordinator ADK tool.
+For deterministic workshop checks, the shared `hirenest_support` package also exposes local search and brief-building functions. The CLI sample cases use those functions so they can run without calling an LLM. That deterministic path is not registered as a coordinator ADK tool.
 
 ## Setup
 
@@ -49,6 +50,16 @@ cp .env.example .env
 ```
 
 Set either `GOOGLE_API_KEY` for Google AI Studio or Agent Platform environment variables in `.env`.
+
+Optional integrations:
+
+```bash
+# Gemini Enterprise Agent Search / Discovery Engine serving config
+export HIRENEST_AGENT_SEARCH_SERVING_CONFIG="projects/PROJECT/locations/LOCATION/collections/default_collection/engines/ENGINE/servingConfigs/default_config"
+
+# Discord escalation notifications; without this the tool returns a dry-run payload
+export HIRENEST_DISCORD_WEBHOOK_URL="YOUR_DISCORD_WEBHOOK_URL"
+```
 
 Important dependency note: ADK 2.1 requires `a2a-sdk>=0.3,<0.4` for the current A2A helper modules. This repo pins `a2a-sdk[http-server]==0.3.26` so the Starlette A2A server can serve agent cards and JSON-RPC routes.
 
@@ -91,9 +102,9 @@ make case-c
 
 These commands generate deterministic Customer Support Escalation Briefs for local workshop checks:
 
-- Case A: Contoso SAML SSO outage after IdP certificate rotation
-- Case B: Globex billing discrepancy after seat increase
-- Case C: Initech CRM webhook delivery delay
+- Case A: Apex Robotics interview invitation emails not delivered
+- Case B: BlueWave Health Google Calendar availability missing
+- Case C: ClearPath Logistics public job application form missing
 
 ## Test and lint
 
@@ -149,8 +160,8 @@ Agent2Agent on Agent Runtime is currently a preview workflow. Keep local A2A URL
 
 ```text
 agents/                  ADK agent entrypoints
-data/                    Fictional AcmeDesk support corpus
+data/                    Fictional HireNest ATS support corpus
 scripts/                 CLI runners and deployment helpers
-src/acmedesk_support/    Deterministic data search and brief logic
+src/hirenest_support/    Deterministic data search and brief logic
 tests/                   Unit and sample-case tests
 ```

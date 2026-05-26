@@ -142,11 +142,11 @@ append_specialist_a2a_card_urls() {
 }
 
 mkdir -p "${LOG_DIR}" "${DEPLOY_WORK_DIR}"
-rm -rf "${DEPLOY_WORK_DIR}"/source_* "${DEPLOY_WORK_DIR}"/acmedesk_agent_runtime_*
+rm -rf "${DEPLOY_WORK_DIR}"/source_* "${DEPLOY_WORK_DIR}"/hirenest_agent_runtime_*
 
 EXISTING_ENGINES_FILE="${LOG_DIR}/existing_engines.tsv"
 
-banner "AcmeDesk Agent Runtime — Parallel Deploy"
+banner "HireNest Agent Runtime — Parallel Deploy"
 info "Project: ${BOLD}${GOOGLE_CLOUD_PROJECT}${RESET}   Region: ${BOLD}${REGION}${RESET}"
 info "Logs:    ${LOG_DIR}"
 
@@ -295,7 +295,7 @@ vertexai.init(
 )
 
 adk_app = AdkApp(
-    app=App(name=root_agent.name or "acmedesk_agent", root_agent=root_agent),
+    app=App(name=root_agent.name or "hirenest_agent", root_agent=root_agent),
     enable_tracing=${trace_literal},
 )
 PY
@@ -458,7 +458,7 @@ deploy_agent() {
   local engine_id_file="${LOG_DIR}/${agent_slug}.engine_id"
   local prefix="${color}${BOLD}[${name}]${RESET}"
 
-  local display_name="AcmeDesk ${name}"
+  local display_name="HireNest ${name}"
   local existing_id
   existing_id="$(lookup_engine_id "${display_name}")"
   local action_label
@@ -512,11 +512,11 @@ deploy_agent() {
 
 # Specialist agents to deploy, one per line: NAME|MODULE|DESCRIPTION|A2A_URL_ENV_NAME
 SPECIALIST_AGENTS=(
-  "Ticket History Agent|agents.ticket_history.agent|Searches historical AcmeDesk support tickets over A2A.|TICKET_HISTORY_A2A_URL"
-  "Knowledge Base Agent|agents.knowledge_base.agent|Searches AcmeDesk FAQ, troubleshooting, runbooks, policies, and known issues over A2A.|KNOWLEDGE_BASE_A2A_URL"
+  "Ticket History Agent|agents.ticket_history.agent|Searches historical HireNest support tickets over A2A.|TICKET_HISTORY_A2A_URL"
+  "Knowledge Base Agent|agents.knowledge_base.agent|Searches HireNest FAQ, troubleshooting, runbooks, policies, and known issues over A2A.|KNOWLEDGE_BASE_A2A_URL"
   "Account Context Agent|agents.account_context.agent|Looks up customer account, contract, entitlement, SLA, contact, and health context over A2A.|ACCOUNT_CONTEXT_A2A_URL"
   "Incident Status Agent|agents.incident_status.agent|Correlates support cases with active and historical incidents over A2A.|INCIDENT_STATUS_A2A_URL"
-  "Escalation Policy Agent|agents.escalation_policy.agent|Applies AcmeDesk severity, SLA, escalation, and customer-communication policies over A2A.|ESCALATION_POLICY_A2A_URL"
+  "Escalation Policy Agent|agents.escalation_policy.agent|Applies HireNest severity, SLA, escalation, and customer-communication policies over A2A.|ESCALATION_POLICY_A2A_URL"
   "Customer Communication Agent|agents.customer_communication.agent|Generates safe customer-facing support response packages over A2A.|CUSTOMER_COMMUNICATION_A2A_URL"
   "Diagnostics Agent|agents.diagnostics.agent|Recommends diagnostic checks, evidence gaps, and troubleshooting probes over A2A.|DIAGNOSTICS_A2A_URL"
 )

@@ -1,5 +1,5 @@
-# March 2026 Release Notes
+# 2026-03 Release Notes
 
-- Added improved SAML metadata validation messaging.
-- Added webhook retry visibility in integration settings.
-- Fixed invoice export timeout for large customers.
+- Added candidate import preview warnings for unmapped fields.
+- Improved scorecard role diagnostics for support teams.
+- Updated careers site form renderer logging.

@@ -1,19 +1,19 @@
 from __future__ import annotations
 
-from acmedesk_support.diagnostics import recommend_diagnostics
+from hirenest_support.diagnostics import recommend_diagnostics
 
 
-def test_diagnostics_returns_authentication_evidence_gaps() -> None:
-    diagnostics = recommend_diagnostics("Contoso SAML SSO login fails for some users.")
+def test_diagnostics_returns_candidate_communication_evidence_gaps() -> None:
+    diagnostics = recommend_diagnostics("Apex Robotics interview invitation email fails.")
 
-    assert diagnostics["category"] == "authentication"
-    assert "Sanitized SAML error or screenshot" in diagnostics["evidence_to_collect"]
-    assert any("all users" in question for question in diagnostics["clarification_questions"])
+    assert diagnostics["category"] == "candidate_communication"
+    assert "Example candidate IDs" in diagnostics["evidence_to_collect"]
+    assert any("all candidates" in question for question in diagnostics["clarification_questions"])
 
 
-def test_diagnostics_returns_billing_evidence_gaps() -> None:
-    diagnostics = recommend_diagnostics("Globex says the invoice is higher than expected.")
+def test_diagnostics_returns_candidate_import_evidence_gaps() -> None:
+    diagnostics = recommend_diagnostics("Evergreen Retail CSV import missing candidate data.")
 
-    assert diagnostics["category"] == "billing"
-    assert "Expected amount" in diagnostics["evidence_to_collect"]
+    assert diagnostics["category"] == "candidate_import"
+    assert "CSV file name and import job ID" in diagnostics["evidence_to_collect"]
     assert diagnostics["customer_safe_next_steps"]

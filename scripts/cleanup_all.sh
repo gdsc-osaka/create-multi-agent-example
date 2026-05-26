@@ -22,7 +22,7 @@ REGION="${GOOGLE_CLOUD_LOCATION:-us-central1}"
 LOG_DIR="${REPO_ROOT}/.agent-runtime-temp"
 mkdir -p "${LOG_DIR}"
 
-PREFIX="AcmeDesk "
+PREFIX="HireNest "
 ASSUME_YES=0
 DRY_RUN=0
 
@@ -35,7 +35,7 @@ project/region whose display_name starts with the given prefix. Designed to
 clean up duplicates produced by older deploy runs.
 
 Options:
-  --prefix STR   Display-name prefix to match (default: "AcmeDesk ")
+  --prefix STR   Display-name prefix to match (default: "HireNest ")
   --all          Delete EVERY reasoning engine in this project/region.
                  (equivalent to --prefix "")
   -y, --yes      Skip the interactive confirmation prompt.
@@ -98,7 +98,7 @@ ok()    { printf "%s[ ok ]%s %s\n"  "${FG_GREEN}${BOLD}"  "${RESET}" "$*"; }
 warn()  { printf "%s[warn]%s %s\n"  "${FG_YELLOW}${BOLD}" "${RESET}" "$*"; }
 err()   { printf "%s[fail]%s %s\n"  "${FG_RED}${BOLD}"    "${RESET}" "$*" >&2; }
 
-banner "AcmeDesk Agent Runtime — Cleanup"
+banner "HireNest Agent Runtime — Cleanup"
 info "Project: ${BOLD}${GOOGLE_CLOUD_PROJECT}${RESET}   Region: ${BOLD}${REGION}${RESET}"
 if [[ -n "${PREFIX}" ]]; then
   info "Filter:  display_name starts with ${BOLD}\"${PREFIX}\"${RESET}"

@@ -63,9 +63,11 @@ def test_adk_agent_entrypoints_import_when_dependencies_exist() -> None:
         "incident_status_agent",
         "knowledge_base_agent",
         "diagnostics_agent",
+        "escalation_policy_agent",
         "parallel_investigation_join",
         "build_synthesis_input",
         "synthesis_hypothesis_agent",
+        "build_escalation_policy_input",
         "build_final_package_input",
         "support_case_resolution_package_agent",
     } <= resolution_node_names
@@ -86,7 +88,9 @@ def test_adk_agent_entrypoints_import_when_dependencies_exist() -> None:
         ("knowledge_base_agent", "parallel_investigation_join", None),
         ("diagnostics_agent", "parallel_investigation_join", None),
         ("parallel_investigation_join", "build_synthesis_input", None),
-        ("synthesis_hypothesis_agent", "build_final_package_input", None),
+        ("synthesis_hypothesis_agent", "build_escalation_policy_input", None),
+        ("build_escalation_policy_input", "escalation_policy_agent", None),
+        ("escalation_policy_agent", "build_final_package_input", None),
         ("build_final_package_input", "support_case_resolution_package_agent", None),
     } <= resolution_edges
 
@@ -125,7 +129,7 @@ def test_coordinator_retry_route_requests_human_input() -> None:
 
     ctx = SimpleNamespace(state={})
     plan = InvestigationPlan(
-        case_category="authentication",
+        case_category="candidate_communication",
         urgency="unknown",
         business_impact="unknown",
         ready_for_investigation=False,
@@ -165,15 +169,15 @@ def test_coordinator_final_input_applies_deterministic_policy_and_communication(
         STATE_INVESTIGATION_PLAN,
         STATE_SYNTHESIS_BRIEF,
     )
-    from agents.coordinator.steps import build_final_package_input
+    from agents.coordinator.steps import build_escalation_policy_input, build_final_package_input
 
     ctx = SimpleNamespace(
         invocation_id="test-invocation",
         state={
             STATE_INVESTIGATION_PLAN: {
-                "case_category": "authentication",
+                "case_category": "candidate_communication",
                 "urgency": "high",
-                "business_impact": "all employees cannot log in",
+                "business_impact": "all candidates did not receive interview invitations",
             }
         },
         session=SimpleNamespace(
@@ -185,8 +189,8 @@ def test_coordinator_final_input_applies_deterministic_policy_and_communication(
                         parts=[
                             SimpleNamespace(
                                 text=(
-                                    "Contoso reports all employees cannot log in with SAML SSO "
-                                    "after an IdP certificate rotation."
+                                    "Apex Robotics reports all candidates did not receive "
+                                    "interview invitation emails."
                                 )
                             )
                         ]
@@ -196,10 +200,28 @@ def test_coordinator_final_input_applies_deterministic_policy_and_communication(
         ),
     )
 
-    result = build_final_package_input(ctx, "Synthesis: broad SSO impact after IdP change.")
+    policy_input = build_escalation_policy_input(
+        ctx,
+        "Synthesis: broad candidate invitation delivery impact.",
+    )
+    result = build_final_package_input(
+        ctx,
+        {
+            "severity": "SEV2",
+            "severity_reason": "Premier customer reports candidate-facing impact.",
+            "sla": {"first_response": "30 minutes", "update_frequency": "60 minutes"},
+            "should_escalate": True,
+            "team": "Messaging Platform",
+            "reason": "SEV2 threshold met.",
+            "attach": ["Example candidate IDs"],
+            "additional_info_needed": ["Exact first failure time"],
+            "customer_safe_constraints": ["Do not include raw logs."],
+        },
+    )
 
+    assert "Evaluate escalation policy" in policy_input
     assert ctx.state[STATE_SYNTHESIS_BRIEF] == (
-        "Synthesis: broad SSO impact after IdP change."
+        "Synthesis: broad candidate invitation delivery impact."
     )
     assert ctx.state[STATE_ESCALATION_POLICY]["severity"] == "SEV2"
     assert "## Escalation Policy Check" in result
@@ -213,15 +235,15 @@ def test_coordinator_final_input_preserves_japanese_output_language() -> None:
     from agents.coordinator.constants import (
         STATE_INVESTIGATION_PLAN,
     )
-    from agents.coordinator.steps import build_final_package_input
+    from agents.coordinator.steps import build_escalation_policy_input, build_final_package_input
 
     ctx = SimpleNamespace(
         invocation_id="test-invocation",
         state={
             STATE_INVESTIGATION_PLAN: {
-                "case_category": "authentication",
+                "case_category": "candidate_communication",
                 "urgency": "high",
-                "business_impact": "全社員がログインできない",
+                "business_impact": "全候補者に面接招待メールが届かない",
             }
         },
         session=SimpleNamespace(
@@ -233,8 +255,7 @@ def test_coordinator_final_input_preserves_japanese_output_language() -> None:
                         parts=[
                             SimpleNamespace(
                                 text=(
-                                    "ContosoでIdP証明書を更新した後、全社員がSAML SSOで"
-                                    "ログインできません。"
+                                    "Apex Roboticsで全候補者に面接招待メールが届きません。"
                                 )
                             )
                         ]
@@ -244,7 +265,20 @@ def test_coordinator_final_input_preserves_japanese_output_language() -> None:
         ),
     )
 
-    result = build_final_package_input(ctx, "仮説: IdPメタデータの不整合が疑われます。")
+    build_escalation_policy_input(ctx, "仮説: 面接招待メールの配信遅延が疑われます。")
+    result = build_final_package_input(
+        ctx,
+        {
+            "severity": "SEV2",
+            "sla": {"first_response": "30 minutes", "update_frequency": "60 minutes"},
+            "should_escalate": True,
+            "team": "Messaging Platform",
+            "reason": "SEV2 threshold met.",
+            "attach": ["Example candidate IDs"],
+            "additional_info_needed": ["Exact first failure time"],
+            "customer_safe_constraints": ["Do not include raw logs."],
+        },
+    )
 
     assert "Output language requirement:" in result
     assert (

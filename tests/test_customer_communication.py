@@ -1,18 +1,18 @@
 from __future__ import annotations
 
-from acmedesk_support.brief import build_escalation_brief
-from acmedesk_support.communication import generate_customer_response_package
+from hirenest_support.brief import build_escalation_brief
+from hirenest_support.communication import generate_customer_response_package
 
 
 def test_customer_communication_redacts_internal_details_and_requires_review() -> None:
     brief = build_escalation_brief(
-        "Contoso administrator reports that all employees cannot log in with SAML SSO. "
-        "They updated the IdP certificate yesterday. This is a Premier support customer."
+        "Apex Robotics reports that interview invitation emails are not delivered to all "
+        "candidates for a hiring event. This is a Premier support customer."
     )
 
     package = generate_customer_response_package(brief)
 
-    assert package["subject"] == "Update on SSO login issue"
+    assert package["subject"] == "Update on interview invitation delivery"
     assert package["requires_human_review"] is True
     assert "SEV2 case" in package["human_review_reason"]
     assert "INC-2026" not in package["customer_response"]

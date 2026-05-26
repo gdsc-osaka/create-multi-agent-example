@@ -7,8 +7,6 @@ from google.adk.events import RequestInput
 from google.adk.events.event import Event
 from google.adk.workflow import DEFAULT_ROUTE
 
-from acmedesk_support.communication import generate_customer_response_package
-from acmedesk_support.policy import recommend_escalation
 from agents.coordinator.constants import (
     INVESTIGATION_AGENT_NAMES,
     ROUTE_RETRY,
@@ -19,6 +17,8 @@ from agents.coordinator.constants import (
     STATE_SYNTHESIS_BRIEF,
 )
 from agents.coordinator.schemas import InvestigationPlan
+from hirenest_support.communication import generate_customer_response_package
+from hirenest_support.policy import recommend_escalation
 
 
 def _event_text(event: Event) -> str:
@@ -181,6 +181,20 @@ def _format_escalation_policy(policy: dict[str, Any]) -> str:
     )
 
 
+def _format_policy_agent_output(policy_output: Any) -> str:
+    if isinstance(policy_output, dict):
+        if "severity" in policy_output or "should_escalate" in policy_output:
+            return _format_escalation_policy(policy_output)
+        for key in ["policy", "escalation_policy", "result", "output"]:
+            value = policy_output.get(key)
+            if isinstance(value, dict):
+                return _format_policy_agent_output(value)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+    text = _stringify(policy_output)
+    return text if text else "Escalation policy agent returned no policy output."
+
+
 def _format_customer_communication(response_package: dict[str, Any]) -> str:
     disclosure = response_package.get("disclosure_check", {})
     return "\n\n".join(
@@ -212,14 +226,34 @@ def _format_customer_communication(response_package: dict[str, Any]) -> str:
     )
 
 
-def build_final_package_input(ctx: Context, node_input: Any) -> str:
+def build_escalation_policy_input(ctx: Context, node_input: Any) -> str:
     customer_messages = "\n\n".join(_session_user_messages(ctx))
     synthesis = _stringify(node_input)
-    policy = recommend_escalation("\n\n".join([customer_messages, synthesis]))
     ctx.state[STATE_SYNTHESIS_BRIEF] = synthesis
-    ctx.state[STATE_ESCALATION_POLICY] = policy
+    return "\n\n".join(
+        [
+            "Evaluate escalation policy for this HireNest ATS support case.",
+            "Return severity, SLA, should_escalate, recommended team, required attachments, "
+            "missing information, customer-safe constraints, and Discord notification result "
+            "when escalation is required.",
+            "Customer inquiry and session context:",
+            customer_messages,
+            "Synthesis / hypothesis update:",
+            synthesis,
+        ]
+    )
 
-    policy_text = _format_escalation_policy(policy)
+
+def build_final_package_input(ctx: Context, node_input: Any) -> str:
+    customer_messages = "\n\n".join(_session_user_messages(ctx))
+    synthesis = _stringify(ctx.state.get(STATE_SYNTHESIS_BRIEF, ""))
+    policy_agent_output = node_input
+    policy_text = _format_policy_agent_output(policy_agent_output)
+
+    # Keep deterministic structured state for tests and local communication drafting when the
+    # remote A2A output is natural language rather than a tool-returned dict.
+    policy = recommend_escalation("\n\n".join([customer_messages, synthesis]))
+    ctx.state[STATE_ESCALATION_POLICY] = policy
     communication_source = "\n\n".join(
         [
             "# Coordinator Support Brief",
@@ -234,7 +268,9 @@ def build_final_package_input(ctx: Context, node_input: Any) -> str:
             ),
             "## Synthesis / Hypothesis Update",
             synthesis,
+            "## Escalation Policy Agent Output",
             policy_text,
+            _format_escalation_policy(policy),
         ]
     )
     response_package = generate_customer_response_package(communication_source)
@@ -253,8 +289,10 @@ def build_final_package_input(ctx: Context, node_input: Any) -> str:
             customer_messages,
             "Synthesis / hypothesis update:",
             synthesis,
-            "Escalation policy check:",
+            "Escalation policy check from escalation_policy_agent:",
             policy_text,
+            "Deterministic policy state used for communication safety checks:",
+            _format_escalation_policy(policy),
             "Customer communication draft:",
             _format_customer_communication(response_package),
         ]

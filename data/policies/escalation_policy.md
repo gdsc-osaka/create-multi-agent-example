@@ -1,19 +1,6 @@
 # Escalation Policy
 
-Escalate when the case has one or more of the following:
+SEV2: Candidate-facing workflow unavailable, interview scheduling blocked, or broad published job application impact.
+SEV3: Single workflow degraded with workaround, candidate import missing fields, or scorecard access blocking a subset of interviews.
 
-- SEV1 or SEV2 customer impact.
-- Premier customer with all-user login outage.
-- Webhook delay over 30 minutes with business workflow impact.
-- Active incident correlation requiring engineering confirmation.
-- Billing discrepancy that requires ledger correction or invoice regeneration.
-
-Recommended teams:
-
-- Authentication, SAML, IdP certificates: Identity Platform.
-- SCIM provisioning: Identity Platform.
-- Webhooks, CRM integrations, queue latency: Integrations Platform.
-- Invoice, seat true-up, contract mismatch: Billing Operations.
-- Dashboard latency: Application Performance.
-
-Attach only relevant diagnostic information. Do not attach raw secrets, full SAML assertions, customer personal data, or unrelated logs.
+Owner teams: Messaging Platform for candidate email, Scheduling Integrations for calendar, Careers Site Platform for public job pages, Permissions and Workflow for scorecards, Data Import Operations for CSV imports.

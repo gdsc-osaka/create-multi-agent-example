@@ -15,7 +15,7 @@ triage_planning_agent = Agent(
     description="Classifies the support case and creates an adaptive investigation plan.",
     output_schema=InvestigationPlan,
     instruction=(
-        "You are the Triage / Planning Agent for AcmeDesk Support. "
+        "You are the Triage / Planning Agent for HireNest ATS Support. "
         "Read the customer inquiry and any prior user turns in the session. "
         "Return an InvestigationPlan. Classify the case, identify urgency and business "
         "impact, list initial hypotheses, and produce specialist directives for Account "
@@ -63,6 +63,13 @@ diagnostics_agent = RemoteA2aAgent(
     description="Suggests diagnostic checks, evidence gaps, and next troubleshooting probes.",
     use_legacy=False,
 )
+escalation_policy_agent = RemoteA2aAgent(
+    name="escalation_policy_agent",
+    agent_card=specialist_card_url("ESCALATION_POLICY_A2A_URL", "http://localhost:8105"),
+    httpx_client=_remote_a2a_httpx_client,
+    description="Applies severity, SLA, escalation, and customer communication policy.",
+    use_legacy=False,
+)
 parallel_investigation_join = JoinNode(name="parallel_investigation_join")
 
 synthesis_hypothesis_agent = Agent(
@@ -70,7 +77,7 @@ synthesis_hypothesis_agent = Agent(
     model=model_name(),
     description="Synthesizes parallel findings and updates the working hypotheses.",
     instruction=(
-        "You are the Synthesis / Hypothesis Update Agent for AcmeDesk Support. "
+        "You are the Synthesis / Hypothesis Update Agent for HireNest ATS Support. "
         "Use the triage plan and all parallel specialist findings. "
         "Update the hypotheses, explain which evidence supports or weakens each hypothesis, "
         "identify whether clarification is needed, and prepare an internal support brief. "
@@ -84,7 +91,7 @@ final_package_agent = Agent(
     model=model_name(),
     description="Generates the final Support Case Resolution Package.",
     instruction=(
-        "You are the Support Case Resolution Package Agent for AcmeDesk. "
+        "You are the Support Case Resolution Package Agent for HireNest. "
         "Combine the synthesis, escalation policy check, and customer communication draft. "
         "Follow the Output language requirement in the input. Do not default to English "
         "just because intermediate evidence or templates are in English. Preserve product "

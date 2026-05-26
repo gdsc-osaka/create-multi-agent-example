@@ -8,6 +8,7 @@ from agents.coordinator.constants import ROUTE_RETRY
 from agents.coordinator.nodes import (
     account_context_agent,
     diagnostics_agent,
+    escalation_policy_agent,
     final_package_agent,
     incident_status_agent,
     knowledge_base_agent,
@@ -17,6 +18,7 @@ from agents.coordinator.nodes import (
     triage_planning_agent,
 )
 from agents.coordinator.steps import (
+    build_escalation_policy_input,
     build_final_package_input,
     build_retry_planning_input,
     build_synthesis_input,
@@ -37,6 +39,8 @@ support_resolution_workflow = Workflow(
             parallel_investigation_join,
             build_synthesis_input,
             synthesis_hypothesis_agent,
+            build_escalation_policy_input,
+            escalation_policy_agent,
             build_final_package_input,
             final_package_agent,
         ),
