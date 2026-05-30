@@ -2,11 +2,13 @@ from __future__ import annotations
 
 from google.adk import Agent
 
-from agents._common import build_a2a_app, model_name
+from agents._common import build_a2a_app
+
+EXPERIENCE_AGENT_MODEL = "gemini-3.5-flash"
 
 root_agent = Agent(
     name="experience_agent",
-    model=model_name(),
+    model=EXPERIENCE_AGENT_MODEL,
     description="旅行候補を非日常性、記憶に残る体験、嗜好一致で評価する。",
     instruction=(
         "あなたは experience_agent です。初回評価では EvaluationReport を返してください。"

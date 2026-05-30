@@ -48,8 +48,6 @@ GOOGLE_CLOUD_LOCATION=us-central1
 Optional environment variables:
 
 ```bash
-ADK_MODEL=gemini-2.5-flash
-ADK_IMAGE_MODEL=gemini-3-pro-image
 COMFORT_A2A_URL=http://localhost:8101
 RISK_A2A_URL=http://localhost:8102
 EXPERIENCE_A2A_URL=http://localhost:8103

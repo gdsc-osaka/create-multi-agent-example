@@ -56,10 +56,6 @@ def maybe_enable_cloud_trace() -> None:
 maybe_enable_cloud_trace()
 
 
-def model_name() -> str:
-    return os.getenv("ADK_MODEL", "gemini-2.5-flash")
-
-
 def specialist_card_url(env_name: str, default_base_url: str) -> str:
     base_url = os.getenv(env_name, default_base_url).rstrip("/")
     if base_url.endswith("/v1/card"):

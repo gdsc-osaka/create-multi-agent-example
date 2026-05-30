@@ -2,11 +2,13 @@ from __future__ import annotations
 
 from google.adk import Agent
 
-from agents._common import build_a2a_app, model_name
+from agents._common import build_a2a_app
+
+COMFORT_AGENT_MODEL = "gemini-3.5-flash"
 
 root_agent = Agent(
     name="comfort_agent",
-    model=model_name(),
+    model=COMFORT_AGENT_MODEL,
     description="旅行候補を移動負荷、休憩、宿泊快適性、疲労しにくさで評価する。",
     instruction=(
         "あなたは comfort_agent です。初回評価では EvaluationReport を返してください。"

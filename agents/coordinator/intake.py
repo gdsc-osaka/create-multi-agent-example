@@ -7,38 +7,21 @@ from google.adk.agents.context import Context
 from google.adk.events import RequestInput
 from google.adk.events.event import Event
 from google.adk.workflow import DEFAULT_ROUTE
-from pydantic import BaseModel, Field
 
-from agents._common import model_name
+from agents.coordinator.intake_models import TravelRequest
+from agents.coordinator.utils import text
+
+__all__ = [
+    "TravelRequest",
+]
 
 ROUTE_CLARIFY = "clarify"
 MAX_CLARIFICATION_ROUNDS = 2
+ANALYST_AGENT_MODEL = "gemini-3.5-flash"
 
 STATE_RAW_USER_QUERY = "raw_user_query"
 STATE_TRAVEL_REQUEST = "travel_request"
 STATE_CLARIFICATION_ROUNDS = "clarification_rounds"
-
-
-class TravelRequest(BaseModel):
-    origin: str | None = Field(default=None, description="出発地。例: 東京、大阪。")
-    duration: str | None = Field(default=None, description="旅行期間。通常は1泊2日。")
-    budget: str | None = Field(default=None, description="総予算または一人あたり予算。")
-    transport: str | None = Field(default=None, description="主な交通手段。")
-    companions: str | None = Field(default=None, description="同行者構成。")
-    preferences: list[str] = Field(default_factory=list, description="旅行嗜好。")
-    constraints: list[str] = Field(default_factory=list, description="制約条件。")
-    unknowns: list[str] = Field(default_factory=list, description="品質に影響する不足情報。")
-    raw_user_query: str = Field(description="元のユーザー入力。")
-
-
-def text(value: Any) -> str:
-    if value is None:
-        return ""
-    if isinstance(value, str):
-        return value.strip()
-    if hasattr(value, "model_dump_json"):
-        return value.model_dump_json(indent=2)
-    return repr(value)
 
 
 def _event_text(event: Event) -> str:
@@ -58,7 +41,7 @@ def _latest_user_text(ctx: Context) -> str:
 
 analyst_agent = Agent(
     name="analyst",
-    model=model_name(),
+    model=ANALYST_AGENT_MODEL,
     description="旅行希望を構造化し、不足情報を抽出する。",
     output_schema=TravelRequest,
     instruction=(

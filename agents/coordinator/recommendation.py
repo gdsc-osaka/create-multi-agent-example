@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import os
 from typing import Any
 
 from google.adk import Agent, Workflow
@@ -9,21 +8,35 @@ from google.adk.agents.context import Context
 from google.adk.events import RequestInput
 from google.adk.events.event import Event
 from google.adk.workflow import FunctionNode
-from pydantic import BaseModel, Field
 
-from agents._common import model_name
 from agents.coordinator.candidates import (
     STATE_RESEARCH_REPORTS,
     STATE_TRAVEL_OPTIONS,
-    ResearchReport,
-    TravelOption,
 )
+from agents.coordinator.candidates_models import ResearchReport, TravelOption
 from agents.coordinator.evaluation import (
     STATE_REVISED_EVALUATIONS,
+)
+from agents.coordinator.evaluation_models import (
     EvaluationReport,
     EvaluationReports,
 )
-from agents.coordinator.intake import STATE_TRAVEL_REQUEST, TravelRequest, text
+from agents.coordinator.intake import STATE_TRAVEL_REQUEST
+from agents.coordinator.intake_models import TravelRequest
+from agents.coordinator.recommendation_models import (
+    CoordinatorRecommendation,
+    DetailedItinerary,
+    RankedOption,
+    SelectedOptionContext,
+)
+from agents.coordinator.utils import text
+
+__all__ = [
+    "CoordinatorRecommendation",
+    "DetailedItinerary",
+    "RankedOption",
+    "SelectedOptionContext",
+]
 
 ROUTE_REPLAN = "replan"
 ROUTE_SELECTED = "selected"
@@ -34,46 +47,14 @@ STATE_SELECTED_OPTION_ID = "selected_option_id"
 STATE_SELECTED_OPTION_CONTEXT = "selected_option_context"
 STATE_DETAILED_ITINERARY = "detailed_itinerary"
 
-
-class RankedOption(BaseModel):
-    option_id: str
-    rank: int
-    title: str
-    reason: str
-    cautions: list[str]
-
-
-class CoordinatorRecommendation(BaseModel):
-    ranked_options: list[RankedOption] = Field(max_length=3)
-    comparison_summary: str
-    conflict_resolution: str
-    user_message: str
-
-
-class SelectedOptionContext(BaseModel):
-    travel_request: TravelRequest
-    selected_option: TravelOption
-    research_report: ResearchReport
-    evaluations: list[EvaluationReport]
-    recommendation: RankedOption | None
-    coordinator_notes: str
-
-
-class DetailedItinerary(BaseModel):
-    option_id: str
-    title: str
-    day1: list[str]
-    day2: list[str]
-    meals: list[str]
-    lodging: str
-    rainy_day_alternatives: list[str]
-    notes: list[str]
-    bookmark_text: str = Field(description="旅しおりに掲載する短い本文。")
+COORDINATOR_AGENT_MODEL = "gemini-3.5-flash"
+PLANNER_AGENT_MODEL = "gemini-3.5-flash"
+ILLUSTRATOR_AGENT_MODEL = "gemini-3-pro-image"
 
 
 coordinator_agent = Agent(
     name="coordinator",
-    model=model_name(),
+    model=COORDINATOR_AGENT_MODEL,
     description="評価の衝突を調停し、推薦順位、理由、注意点を出す。",
     output_schema=CoordinatorRecommendation,
     instruction=(
@@ -86,7 +67,7 @@ coordinator_agent = Agent(
 
 planner_agent = Agent(
     name="planner",
-    model=model_name(),
+    model=PLANNER_AGENT_MODEL,
     description="選ばれた候補だけを使って詳細な1泊2日旅程を作る。",
     output_schema=DetailedItinerary,
     instruction=(
@@ -99,7 +80,7 @@ planner_agent = Agent(
 
 illustrator_agent = Agent(
     name="illustrator",
-    model=os.getenv("ADK_IMAGE_MODEL", "gemini-3-pro-image"),
+    model=ILLUSTRATOR_AGENT_MODEL,
     description="旅しおりの表紙画像を生成する。",
     instruction=(
         "あなたは旅行しおりのイラストレーターです。入力された詳細旅程と候補情報をもとに、"

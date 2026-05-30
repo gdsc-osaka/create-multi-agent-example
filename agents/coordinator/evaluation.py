@@ -1,70 +1,30 @@
 from __future__ import annotations
 
-from typing import Any
-
 from google.adk import Agent
 from google.adk.agents.readonly_context import ReadonlyContext
 from google.adk.agents.remote_a2a_agent import RemoteA2aAgent
-from pydantic import BaseModel, Field, model_validator
 
-from agents._common import model_name, runtime_a2a_httpx_client, specialist_card_url
+from agents._common import runtime_a2a_httpx_client, specialist_card_url
 from agents.coordinator.candidates import (
     STATE_RESEARCH_REPORTS,
     STATE_TRAVEL_OPTIONS,
 )
-from agents.coordinator.intake import STATE_TRAVEL_REQUEST, text
+from agents.coordinator.evaluation_models import (
+    EvaluationReport,
+    EvaluationReports,
+    OptionEvaluation,
+)
+from agents.coordinator.intake import STATE_TRAVEL_REQUEST
+from agents.coordinator.utils import text
+
+__all__ = [
+    "EvaluationReport",
+    "EvaluationReports",
+    "OptionEvaluation",
+]
 
 STATE_REVISED_EVALUATIONS = "revised_evaluations"
-
-
-class OptionEvaluation(BaseModel):
-    option_id: str
-    score: int = Field(ge=1, le=10)
-    comment: str
-    concerns: list[str] = Field(default_factory=list)
-
-
-class EvaluationReport(BaseModel):
-    agent_name: str
-    preferred_option_id: str
-    option_evaluations: list[OptionEvaluation]
-
-    @model_validator(mode="before")
-    @classmethod
-    def migrate_legacy_option_maps(cls, data: Any) -> Any:
-        if not isinstance(data, dict) or "option_evaluations" in data:
-            return data
-
-        scores = data.get("scores_by_option")
-        comments = data.get("comments_by_option", {})
-        concerns = data.get("concerns_by_option", {})
-        if not isinstance(scores, dict):
-            return data
-
-        migrated = dict(data)
-        migrated["option_evaluations"] = [
-            {
-                "option_id": option_id,
-                "score": score,
-                "comment": comments.get(option_id, ""),
-                "concerns": concerns.get(option_id, []),
-            }
-            for option_id, score in scores.items()
-        ]
-        migrated.pop("scores_by_option", None)
-        migrated.pop("comments_by_option", None)
-        migrated.pop("concerns_by_option", None)
-        return migrated
-
-    def score_for(self, option_id: str) -> int | None:
-        for evaluation in self.option_evaluations:
-            if evaluation.option_id == option_id:
-                return evaluation.score
-        return None
-
-
-class EvaluationReports(BaseModel):
-    reports: list[EvaluationReport]
+EVALUATION_AGENT_MODEL = "gemini-3.5-flash"
 
 
 _remote_a2a_httpx_client = runtime_a2a_httpx_client()
@@ -107,7 +67,7 @@ def build_evaluation_instruction(ctx: ReadonlyContext) -> str:
             "ResearchReports、期待する EvaluationReport 形式を含めてください。",
             "費用、費用対効果、隠れコストの budget_agent 評価はあなた自身が作成してください。",
             "subagent の評価が不足、矛盾、曖昧な場合だけ追加で依頼してください。",
-            "追加依頼の必要回数はあなたが判断してください。",
+            "最低でも2回の追加議論をしてください。",
             "最終出力は EvaluationReports だけです。reports には budget_agent、comfort_agent、"
             "risk_agent、experience_agent の EvaluationReport を入れてください。",
             "各 EvaluationReport は agent_name、preferred_option_id、"
@@ -127,7 +87,7 @@ def build_evaluation_instruction(ctx: ReadonlyContext) -> str:
 
 evaluation_agent = Agent(
     name="multi_agent_evaluation",
-    model=model_name(),
+    model=EVALUATION_AGENT_MODEL,
     description="Collaboratively evaluates travel candidates with remote specialist agents.",
     instruction=build_evaluation_instruction,
     output_key=STATE_REVISED_EVALUATIONS,

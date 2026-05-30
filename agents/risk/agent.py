@@ -2,11 +2,13 @@ from __future__ import annotations
 
 from google.adk import Agent
 
-from agents._common import build_a2a_app, model_name
+from agents._common import build_a2a_app
+
+RISK_AGENT_MODEL = "gemini-3.5-flash"
 
 root_agent = Agent(
     name="risk_agent",
-    model=model_name(),
+    model=RISK_AGENT_MODEL,
     description="旅行候補を休業、混雑、天候、予約困難、交通遅延、不確実性で評価する。",
     instruction=(
         "あなたは risk_agent です。初回評価では EvaluationReport を返してください。"

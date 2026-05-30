@@ -6,55 +6,28 @@ from typing import Any
 from google.adk import Agent, Context
 from google.adk.tools import google_search
 from google.adk.workflow import node
-from pydantic import BaseModel, Field
 
-from agents._common import model_name
-from agents.coordinator.intake import STATE_TRAVEL_REQUEST, text
+from agents.coordinator.candidates_models import ResearchReport, TravelOption, TravelOptions
+from agents.coordinator.intake import STATE_TRAVEL_REQUEST
+from agents.coordinator.utils import dump, text
+
+__all__ = [
+    "ResearchReport",
+    "TravelOption",
+    "TravelOptions",
+]
 
 STATE_TRAVEL_OPTIONS = "travel_options"
 STATE_RESEARCH_REPORTS = "research_reports"
 
-
-class TravelOption(BaseModel):
-    option_id: str = Field(description="候補を一意に識別するID。例: option_1。")
-    title: str = Field(description="ユーザーに見せられる短い候補名。")
-    destination: str = Field(description="主な目的地またはエリア。")
-    concept: str = Field(description="旅行方針。")
-    research_focus: list[str] = Field(description="調査で確認すべき観点。")
-    fit_hypothesis: str = Field(description="この候補が合いそうな理由の仮説。")
-
-
-class TravelOptions(BaseModel):
-    options: list[TravelOption] = Field(min_length=3, max_length=5)
-
-
-class ResearchReport(BaseModel):
-    option_id: str
-    destination_summary: str
-    access: str
-    estimated_cost: str
-    lodging_area: str
-    recommended_spots: list[str]
-    food_options: list[str]
-    risks: list[str]
-    weather_or_season_notes: list[str]
-    source_notes: list[str]
-    suitability_reason: str
-
-
-def dump(value: Any) -> Any:
-    if hasattr(value, "model_dump"):
-        return value.model_dump()
-    if isinstance(value, list):
-        return [dump(item) for item in value]
-    if isinstance(value, dict):
-        return {key: dump(item) for key, item in value.items()}
-    return value
+STRATEGIST_AGENT_MODEL = "gemini-3.5-flash"
+RESEARCH_AGENT_MODEL = "gemini-3.1-flash-lite"
+RESEARCH_REPORT_FORMATTER_MODEL = "gemini-3.1-flash-lite"
 
 
 strategist_agent = Agent(
     name="strategist",
-    model=model_name(),
+    model=STRATEGIST_AGENT_MODEL,
     description="旅行方針と候補地を3から5案作る。",
     output_schema=TravelOptions,
     instruction=(
@@ -67,7 +40,7 @@ strategist_agent = Agent(
 
 research_agent = Agent(
     name="research_agent",
-    model=model_name(),
+    model=RESEARCH_AGENT_MODEL,
     description="候補ごとの旅行リサーチを行う。",
     tools=[google_search],
     instruction=(
@@ -84,7 +57,7 @@ research_agent = Agent(
 
 research_report_formatter = Agent(
     name="research_report_formatter",
-    model=model_name(),
+    model=RESEARCH_REPORT_FORMATTER_MODEL,
     description="検索済みリサーチメモをResearchReportへ構造化する。",
     output_schema=ResearchReport,
     instruction=(
