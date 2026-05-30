@@ -1,7 +1,7 @@
 UV ?= uv
 UV_RUN := $(UV) run
 
-.PHONY: setup lock lint test run run-specialists run-coordinator deploy-all web clean
+.PHONY: setup lock lint test run run-specialists run-coordinator run-ag-ui deploy-all web clean
 
 setup:
 	$(UV) sync --extra dev
@@ -35,6 +35,9 @@ run-specialists:
 
 run-coordinator:
 	PYTHONPATH=. $(UV_RUN) uvicorn agents.coordinator.agent:app --host 0.0.0.0 --port 8100
+
+run-ag-ui:
+	PYTHONPATH=. $(UV_RUN) uvicorn agents.coordinator.ag_ui_app:app --host 0.0.0.0 --port 8200
 
 deploy-all:
 	./scripts/deploy_all.sh

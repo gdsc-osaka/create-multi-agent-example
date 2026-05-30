@@ -164,6 +164,8 @@ def parse_evaluation_reports(value: Any) -> list[EvaluationReport]:
             stripped = stripped.removeprefix("```json").removesuffix("```").strip()
         elif stripped.startswith("```"):
             stripped = stripped.removeprefix("```").removesuffix("```").strip()
+        if not stripped:
+            return []
         value = json.loads(stripped)
 
     if isinstance(value, dict):

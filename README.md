@@ -72,6 +72,15 @@ make web
 
 ADK Web listens on `http://localhost:8000`.
 
+AG-UI clients can connect to the coordinator through a separate streaming endpoint:
+
+```bash
+make run-ag-ui
+```
+
+The AG-UI server listens on `http://localhost:8200` and accepts `POST /ag-ui`
+requests using the Agent User Interaction Protocol event stream format.
+
 Agent cards:
 
 ```text
@@ -79,6 +88,26 @@ http://localhost:8100/.well-known/agent-card.json
 http://localhost:8101/.well-known/agent-card.json
 http://localhost:8102/.well-known/agent-card.json
 http://localhost:8103/.well-known/agent-card.json
+```
+
+## Deploy
+
+Deploy the three A2A evaluation specialists first, then the coordinator with
+their Agent Runtime A2A card URLs injected:
+
+```bash
+export GOOGLE_CLOUD_PROJECT=YOUR_PROJECT_ID
+export GOOGLE_CLOUD_LOCATION=us-central1
+export GOOGLE_GENAI_USE_VERTEXAI=true
+make deploy-all
+```
+
+The deployed Reasoning Engine display names are prefixed with `Travel Planning`.
+To inspect or remove deployed resources created by this repo:
+
+```bash
+./scripts/cleanup_all.sh --dry-run
+./scripts/cleanup_all.sh
 ```
 
 ## Sample Input

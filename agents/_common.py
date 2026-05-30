@@ -56,7 +56,11 @@ def maybe_enable_cloud_trace() -> None:
 maybe_enable_cloud_trace()
 
 
-def specialist_card_url(env_name: str, default_base_url: str) -> str:
+def model_name() -> str:
+    return os.getenv("ADK_MODEL", "gemini-2.5-flash")
+
+
+def remote_agent_card_url(env_name: str, default_base_url: str) -> str:
     base_url = os.getenv(env_name, default_base_url).rstrip("/")
     if base_url.endswith("/v1/card"):
         return base_url
@@ -88,7 +92,7 @@ class GoogleCloudAuth(httpx.Auth):
 
 
 def runtime_a2a_httpx_client() -> httpx.AsyncClient | None:
-    if not env_bool("HIRENEST_A2A_USE_ADC_AUTH"):
+    if not env_bool("TRAVEL_AGENT_A2A_USE_ADC_AUTH"):
         return None
     return httpx.AsyncClient(auth=GoogleCloudAuth(), timeout=httpx.Timeout(timeout=60.0))
 
