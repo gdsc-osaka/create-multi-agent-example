@@ -18,17 +18,15 @@ from agents.coordinator.clarify import (
     request_clarification,
     route_after_clarification,
 )
+from agents.coordinator.illustrator import illustrator_agent, illustrator_prompt_agent
 from agents.coordinator.recommendation import (
     ROUTE_REPLAN,
     ROUTE_SELECTED,
     build_planner_input,
     build_replan_input,
-    illustrator_agent,
-    illustrator_prompt_agent,
     planner_agent,
     request_user_selection,
     route_user_selection,
-    store_illustrator_prompt,
     store_itinerary_markdown,
     store_recommendation,
 )
@@ -63,7 +61,6 @@ candidate_workflow = Workflow(
             planner_agent,
             store_itinerary_markdown,
             illustrator_prompt_agent,
-            store_illustrator_prompt,
             illustrator_agent,
         ),
         (build_replan_input, clarify_agent),
@@ -73,7 +70,7 @@ candidate_workflow = Workflow(
 root_agent = Workflow(
     name="dynamic_travel_planning_agent",
     description=(
-        "Dynamic Research + Multi-Agent Evaluation 型の国内1泊2日旅行計画AIエージェント。"
+        "Dynamic Research + Multi-Agent Evaluation 型の旅行計画AIエージェント。"
     ),
     edges=[
         ("START", capture_user_query, clarify_agent),

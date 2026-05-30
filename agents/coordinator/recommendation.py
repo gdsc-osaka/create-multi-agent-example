@@ -20,14 +20,13 @@ from agents.coordinator.evaluation_models import (
     EvaluationReport,
     EvaluationReports,
 )
-from agents.coordinator.intake import STATE_TRAVEL_REQUEST
-from agents.coordinator.intake_models import TravelRequest
+from agents.coordinator.clarify import STATE_TRAVEL_REQUEST
+from agents.coordinator.clarify_models import TravelRequest
 from agents.coordinator.recommendation_models import (
     CoordinatorRecommendation,
     RankedOption,
     SelectedOptionContext,
 )
-from agents.coordinator.recommendation_prompts import IMAGE_PROMPT_FORMAT
 from agents.coordinator.utils import text
 
 __all__ = [
@@ -44,12 +43,8 @@ STATE_COORDINATOR_RECOMMENDATION = "coordinator_recommendation"
 STATE_SELECTED_OPTION_ID = "selected_option_id"
 STATE_SELECTED_OPTION_CONTEXT = "selected_option_context"
 STATE_ITINERARY_MARKDOWN = "itinerary_markdown"
-STATE_ILLUSTRATOR_PROMPT = "illustrator_prompt"
-STATE_FINAL_ITINERARY_PRESENTATION = "final_itinerary_presentation"
 
 PLANNER_AGENT_MODEL = "gemini-3.5-flash"
-ILLUSTRATOR_PROMPT_AGENT_MODEL = "gemini-3.1-pro-preview"
-ILLUSTRATOR_AGENT_MODEL = "gemini-3-pro-image"
 
 
 # --- Agents -----------------------------------------------------------------
@@ -67,40 +62,6 @@ planner_agent = Agent(
     ),
     mode="single_turn",
 )
-
-illustrator_prompt_agent = Agent(
-    name="illustrator_prompt_writer",
-    model=ILLUSTRATOR_PROMPT_AGENT_MODEL,
-    description="plannerの旅程markdownから表紙画像生成用promptを作る。",
-    instruction=(
-        "入力: 旅行旅程\n"
-        "出力: i枚の旅行しおり画像を生成するための英語のprompt\n"
-        "- 画像生成プロンプト以外を出力するのは禁止です\n"
-        "- 旅程ごとに最適なしおり画像は異なります\n"
-        "- 入力された旅程情報を全て配置してください. 省略は禁止です.\n"
-        "- この画像を見るだけで旅程と全く同じ旅行ができることが目標です\n"
-        "- text element ごとに適したフォントと太さを選んでください\n"
-        "- デフォルトのフォントは避けてください\n"
-        "- 常に同じフォントを使うのも避けてください\n"
-        "- 画像のスタイルはこれをそのまま貼ってください: "
-        "'flat 2D cel-shaded anime illustration, hand-drawn line art, crisp black outlines, "
-        "minimal gradients, no realistic skin texture, no 3D rendering, "
-        "no photorealistic lighting, no glossy highlights, no cinematic color grading'"
-        f"- プロンプトは以下のフォーマット例に従ってください\n{IMAGE_PROMPT_FORMAT}"
-    ),
-    mode="single_turn",
-)
-
-illustrator_agent = Agent(
-    name="illustrator",
-    model=ILLUSTRATOR_AGENT_MODEL,
-    description="旅しおりの表紙画像を生成する。",
-    instruction=(
-        "旅しおり画像を生成してください"
-    ),
-    mode="single_turn",
-)
-
 
 # --- Workflow nodes ---------------------------------------------------------
 
@@ -231,12 +192,6 @@ def store_itinerary_markdown(ctx: Context, node_input: Any) -> str:
     markdown = text(node_input)
     ctx.state[STATE_ITINERARY_MARKDOWN] = markdown
     return markdown
-
-
-def store_illustrator_prompt(ctx: Context, node_input: Any) -> str:
-    prompt = text(node_input)
-    ctx.state[STATE_ILLUSTRATOR_PROMPT] = prompt
-    return prompt
 
 
 # --- Helpers ----------------------------------------------------------------

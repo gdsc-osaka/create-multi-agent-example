@@ -1,6 +1,6 @@
 # Dynamic Travel Planning Agent
 
-ADK 2.1 Graph Workflow と A2A specialist agents を使った「Dynamic Research + Multi-Agent Evaluation 型 旅行計画AIエージェント」です。ユーザーの旅行希望から国内1泊2日の候補を6案作り、候補ごとに検索リサーチし、費用・快適性・リスク・体験価値を統合評価します。ユーザーには上位3案を提示し、選ばれた案だけを詳細旅程と旅しおり画像にします。
+ADK 2.1 Graph Workflow と A2A specialist agents を使った「Dynamic Research + Multi-Agent Evaluation 型 旅行計画AIエージェント」です。ユーザーの旅行希望から候補を6案作り、候補ごとに検索リサーチし、費用・快適性・リスク・体験価値を統合評価します。ユーザーには上位3案を提示し、選ばれた案だけを詳細旅程と旅しおり画像にします。
 
 ## Architecture
 
@@ -112,7 +112,7 @@ To inspect or remove deployed resources created by this repo:
 ## Sample Input
 
 ```text
-東京から一泊二日で、静かな田舎に行きたいです。公共交通で行けて、温泉があると嬉しいです。予算は3万円以内です。
+東京から静かな田舎に行きたいです。公共交通で行けて、温泉があると嬉しいです。予算は3万円以内です。
 ```
 
 ## State
@@ -127,7 +127,7 @@ The workflow stores these intermediate artifacts in `session.state`:
 - `coordinator_recommendation`: 上位3案の推薦順位、比較サマリー、評価軸の調停理由
 - `selected_option_id`: ユーザーが選んだ候補ID
 - `selected_option_context`: planner に渡す候補限定コンテキスト
-- `itinerary_markdown`: planner が作成した詳細な1泊2日旅程
+- `itinerary_markdown`: planner が作成した詳細な旅程
 - `illustrator_prompt`: 旅しおり表紙画像を生成するための prompt
 
 ## Repository Layout

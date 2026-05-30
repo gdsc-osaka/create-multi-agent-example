@@ -16,7 +16,7 @@ from agents.coordinator.evaluation_models import (
     EvaluationReports,
     OptionEvaluation,
 )
-from agents.coordinator.intake import STATE_TRAVEL_REQUEST
+from agents.coordinator.clarify import STATE_TRAVEL_REQUEST
 from agents.coordinator.recommendation_models import CoordinatorRecommendation
 from agents.coordinator.utils import text
 

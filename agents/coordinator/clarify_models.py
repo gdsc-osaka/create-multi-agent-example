@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 
 class TravelRequest(BaseModel):
     origin: str | None = Field(default=None, description="出発地。例: 東京、大阪。")
-    duration: str | None = Field(default=None, description="旅行期間。通常は1泊2日。")
+    duration: str | None = Field(default=None, description="旅行期間。")
     budget: str | None = Field(default=None, description="総予算または一人あたり予算。")
     transport: str | None = Field(default=None, description="主な交通手段。")
     companions: str | None = Field(default=None, description="同行者構成。")

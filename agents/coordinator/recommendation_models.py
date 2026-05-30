@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 
 from agents.coordinator.candidates_models import ResearchReport, TravelOption
 from agents.coordinator.evaluation_models import EvaluationReport
-from agents.coordinator.intake_models import TravelRequest
+from agents.coordinator.clarify_models import TravelRequest
 
 
 class RankedOption(BaseModel):

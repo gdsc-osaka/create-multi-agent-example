@@ -33,7 +33,7 @@ strategist_agent = Agent(
     description="旅行方針と候補地を6案作る。",
     output_schema=TravelOptions,
     instruction=(
-        "TravelRequest をもとに、国内旅行候補を6案作ってください。"
+        "TravelRequest をもとに、旅行候補を6案作ってください。"
         "詳細旅程ではなく、旅行方針、候補地、調査観点を作ります。"
         "option_id は option_1, option_2 のように安定した値にしてください。"
     ),
@@ -46,7 +46,7 @@ research_agent = Agent(
     description="候補ごとの旅行リサーチを行う。",
     tools=[google_search],
     instruction=(
-        "あなたは国内旅行リサーチ担当です。入力に含まれる TravelOption について、"
+        "あなたは旅行リサーチ担当です。入力に含まれる TravelOption について、"
         "google_search を使ってアクセス、費用感、宿泊エリア、観光地、食事、"
         "リスク、季節性を調べてください。"
         "option_id は入力の値を必ず維持します。"
