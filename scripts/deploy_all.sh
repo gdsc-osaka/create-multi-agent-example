@@ -232,6 +232,11 @@ prepare_deploy_source() {
     --exclude ".env" \
     --exclude ".agent-runtime-temp/" \
     --exclude ".agent-engine-temp/" \
+    --exclude ".adk/" \
+    --exclude ".kiri/" \
+    --exclude "*.egg-info/" \
+    --exclude "build/" \
+    --exclude "dist/" \
     "${REPO_ROOT}/" "${source_dir}/"
 
   cp "${REQ_FILE}" "${source_dir}/requirements.txt"
