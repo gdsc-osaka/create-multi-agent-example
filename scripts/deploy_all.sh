@@ -228,7 +228,6 @@ prepare_deploy_source() {
     --exclude ".git/" \
     --exclude ".venv/" \
     --exclude "__pycache__/" \
-    --exclude ".pytest_cache/" \
     --exclude ".ruff_cache/" \
     --exclude ".env" \
     --exclude ".agent-runtime-temp/" \

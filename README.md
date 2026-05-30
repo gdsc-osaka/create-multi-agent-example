@@ -1,6 +1,6 @@
 # Dynamic Travel Planning Agent
 
-ADK 2.0 Graph Workflow と A2A specialist agents を使った「Dynamic Research + Multi-Agent Evaluation 型 旅行計画AIエージェント」です。ユーザーの旅行希望から国内1泊2日の候補を3から5案作り、候補ごとに検索リサーチし、複数観点の評価と1ラウンドの revision を経て、ユーザーが選んだ案だけを詳細旅程と旅しおり画像にします。
+ADK 2.1 Graph Workflow と A2A specialist agents を使った「Dynamic Research + Multi-Agent Evaluation 型 旅行計画AIエージェント」です。ユーザーの旅行希望から国内1泊2日の候補を6案作り、候補ごとに検索リサーチし、費用・快適性・リスク・体験価値を統合評価します。ユーザーには上位3案を提示し、選ばれた案だけを詳細旅程と旅しおり画像にします。
 
 ## Architecture
 
@@ -9,17 +9,17 @@ Coordinator Agent (port 8100)
   |- analyst
   |- clarification RequestInput (最大2回)
   |- strategist
-  |- research_agent_1..5 + google_search (fan-out / fan-in)
-  |- budget_agent
+  |- research_candidate[] + google_search (fan-out / fan-in)
+  |- multi_agent_evaluation
   |- Comfort Agent     (RemoteA2aAgent, port 8101)
   |- Risk Agent        (RemoteA2aAgent, port 8102)
   |- Experience Agent  (RemoteA2aAgent, port 8103)
-  |- one-round revision debate
-  |- coordinator recommendation
-  |- user selection RequestInput
+  |- coordinator recommendation (top 3)
+  |- user selection / replan RequestInput
   |- BuildSelectedOptionContext FunctionNode
   |- planner
-  `- illustrator (gemini-3-pro-image)
+  |- illustrator_prompt_writer
+  `- illustrator
 ```
 
 `research_agent` の結果は会話コンテキストに依存せず、join 後に `session.state["research_reports"]` へ `option_id` keyed dict として保存します。`planner` には State 全体ではなく `session.state["selected_option_context"]` だけを渡します。
@@ -124,14 +124,11 @@ The workflow stores these intermediate artifacts in `session.state`:
 - `clarification_rounds`: RequestInput の実行回数
 - `travel_options`: strategist が作った `TravelOption[]`
 - `research_reports`: `option_id` keyed `ResearchReport` dict
-- `evaluations`: 初回 `EvaluationReport[]`
-- `revised_evaluations`: 1ラウンド debate 後の `EvaluationReport[]`
-- `coordinator_recommendation`: 推薦順位、理由、注意点
+- `coordinator_recommendation`: 上位3案の推薦順位、比較サマリー、評価軸の調停理由
 - `selected_option_id`: ユーザーが選んだ候補ID
 - `selected_option_context`: planner に渡す候補限定コンテキスト
 - `itinerary_markdown`: planner が作成した詳細な1泊2日旅程
 - `illustrator_prompt`: 旅しおり表紙画像を生成するための prompt
-- `final_itinerary_presentation`: 旅程 markdown と生成画像をまとめた最終表示用ペイロード
 
 ## Repository Layout
 
@@ -139,7 +136,7 @@ The workflow stores these intermediate artifacts in `session.state`:
 agents/coordinator/agent.py           全体の Graph Workflow wiring
 agents/coordinator/intake.py          ユーザー希望の構造化と clarification
 agents/coordinator/candidates.py      候補生成、検索 research fan-out / fan-in
-agents/coordinator/evaluation.py      評価 agent と1ラウンド revision
+agents/coordinator/evaluation.py      RemoteA2aAgent specialist 呼び出しと統合評価
 agents/coordinator/recommendation.py  推薦、ユーザー選択、詳細旅程、画像生成
 agents/comfort/                       RemoteA2aAgent 用 comfort specialist
 agents/risk/                          RemoteA2aAgent 用 risk specialist
@@ -154,7 +151,8 @@ agents/experience/                    RemoteA2aAgent 用 experience specialist
 - `session.state` への構造化中間成果物保存
 - `google_search` tool を使う候補別 research agents
 - RemoteA2aAgent による comfort / risk / experience 評価
-- budget / comfort / risk / experience の1ラウンド revision
+- coordinator agent による費用分析と specialist 評価の統合推薦
+- 条件変更時の再提案ルート
 - planner の markdown 旅程生成と state 保存
 - illustrator prompt writer agent
 - `gemini-3-pro-image` を使う illustrator agent
@@ -171,8 +169,7 @@ agents/experience/                    RemoteA2aAgent 用 experience specialist
 
 ```bash
 make lint
-make test
 make lock
 ```
 
-既存の決定論的なサポート業務テスト、`data/`、`src/` は旅行計画エージェント化に伴い削除済みです。
+この hands-on example にはリポジトリ内テストスイートはありません。自動チェックは `make lint` を使います。既存の決定論的なサポート業務テスト、`data/`、`src/` は旅行計画エージェント化に伴い削除済みです。

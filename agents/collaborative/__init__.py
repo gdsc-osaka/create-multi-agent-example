@@ -1,1 +1,0 @@
-"""Collaborative workflow agent entrypoint."""
