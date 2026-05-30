@@ -29,15 +29,3 @@ class SelectedOptionContext(BaseModel):
     evaluations: list[EvaluationReport]
     recommendation: RankedOption | None
     coordinator_notes: str
-
-
-class DetailedItinerary(BaseModel):
-    option_id: str
-    title: str
-    day1: list[str]
-    day2: list[str]
-    meals: list[str]
-    lodging: str
-    rainy_day_alternatives: list[str]
-    notes: list[str]
-    bookmark_text: str = Field(description="旅しおりに掲載する短い本文。")

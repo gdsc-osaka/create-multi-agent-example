@@ -3,11 +3,10 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from google.adk import Agent, Workflow
+from google.adk import Agent
 from google.adk.agents.context import Context
 from google.adk.events import RequestInput
 from google.adk.events.event import Event
-from google.adk.workflow import FunctionNode
 
 from agents.coordinator.candidates import (
     STATE_RESEARCH_REPORTS,
@@ -25,15 +24,14 @@ from agents.coordinator.intake import STATE_TRAVEL_REQUEST
 from agents.coordinator.intake_models import TravelRequest
 from agents.coordinator.recommendation_models import (
     CoordinatorRecommendation,
-    DetailedItinerary,
     RankedOption,
     SelectedOptionContext,
 )
+from agents.coordinator.recommendation_prompts import FRONTEND_SKILL, IMAGE_PROMPT_FORMAT
 from agents.coordinator.utils import text
 
 __all__ = [
     "CoordinatorRecommendation",
-    "DetailedItinerary",
     "RankedOption",
     "SelectedOptionContext",
 ]
@@ -45,20 +43,43 @@ MAX_USER_VISIBLE_OPTIONS = 3
 STATE_COORDINATOR_RECOMMENDATION = "coordinator_recommendation"
 STATE_SELECTED_OPTION_ID = "selected_option_id"
 STATE_SELECTED_OPTION_CONTEXT = "selected_option_context"
-STATE_DETAILED_ITINERARY = "detailed_itinerary"
+STATE_ITINERARY_MARKDOWN = "itinerary_markdown"
+STATE_ILLUSTRATOR_PROMPT = "illustrator_prompt"
+STATE_FINAL_ITINERARY_PRESENTATION = "final_itinerary_presentation"
 
 PLANNER_AGENT_MODEL = "gemini-3.5-flash"
+ILLUSTRATOR_PROMPT_AGENT_MODEL = "gemini-3.1-pro-preview"
 ILLUSTRATOR_AGENT_MODEL = "gemini-3-pro-image"
 
 planner_agent = Agent(
     name="planner",
     model=PLANNER_AGENT_MODEL,
-    description="選ばれた候補だけを使って詳細な1泊2日旅程を作る。",
-    output_schema=DetailedItinerary,
+    description="選ばれた候補だけを使って詳細な旅程をmarkdownで作る。",
     instruction=(
-        "selected_option_context のみを根拠に詳細な1泊2日旅程を作ってください。"
-        "時間帯、移動、食事、宿泊、雨天代替、注意点を含めます。"
-        "research_report にない情報は断定せず「要確認」と書いてください。"
+        "入力: 選択された旅行候補\n"
+        "出力: 詳細旅程のmarkdown"
+        "読みやすさを優先し、見出し、箇条書き、時間帯ごとの流れを自然に使います。"
+        "日程には移動、食事、宿泊、雨天代替、注意点を含めてください。"
+        "入力にない情報は断定せず「要確認」と書いてください。"
+    ),
+    mode="single_turn",
+)
+
+illustrator_prompt_agent = Agent(
+    name="illustrator_prompt_writer",
+    model=ILLUSTRATOR_PROMPT_AGENT_MODEL,
+    description="plannerの旅程markdownから表紙画像生成用promptを作る。",
+    instruction=(
+        "入力: 旅行旅程\n"
+        "出力: i枚の旅行しおり画像を生成するための英語のprompt\n"
+        f"{FRONTEND_SKILL}",
+        "- 画像生成プロンプト以外を出力するのは禁止です\n"
+        "- 旅程ごとに最適なしおり画像は異なります\n"
+        "- 入力された旅程情報を全てテキストとして配置してください. 省略は禁止です.\n"
+        "- この画像を見るだけで旅程と全く同じ旅行ができることが目標です\n"
+        "- 画像のスタイルはこれをそのまま貼ってください: 'flat 2D cel-shaded anime illustration, hand-drawn line art, crisp black outlines, minimal gradients, no realistic skin texture, no 3D rendering, no photorealistic lighting, no glossy highlights, no cinematic color grading'"
+        f"- プロンプトは以下のフォーマット例に従ってください\n{IMAGE_PROMPT_FORMAT}"
+        
     ),
     mode="single_turn",
 )
@@ -68,8 +89,7 @@ illustrator_agent = Agent(
     model=ILLUSTRATOR_AGENT_MODEL,
     description="旅しおりの表紙画像を生成する。",
     instruction=(
-        "あなたは旅行しおりのイラストレーターです。入力された詳細旅程と候補情報をもとに、"
-        "国内1泊2日旅行の旅しおり表紙画像を生成してください。"
+        "旅しおり画像を生成してください"
     ),
     mode="single_turn",
 )
@@ -184,55 +204,79 @@ def build_selected_option_context(ctx: Context, node_input: Any) -> SelectedOpti
     return context
 
 
-build_selected_option_context_node = FunctionNode(
-    name="build_selected_option_context",
-    func=build_selected_option_context,
-    parameter_binding="state",
-)
-
-
-def build_planner_input(ctx: Context, node_input: SelectedOptionContext) -> str:
-    return "\n\n".join(
-        [
-            "selected_option_context のみを根拠に、詳細な1泊2日旅程を作ってください。",
-            "selected_option_context:",
-            node_input.model_dump_json(indent=2),
-            "research_report にない情報は断定せず、「要確認」と書いてください。",
-        ]
-    )
-
-
-def store_detailed_itinerary(ctx: Context, node_input: DetailedItinerary) -> DetailedItinerary:
-    ctx.state[STATE_DETAILED_ITINERARY] = node_input.model_dump()
-    return node_input
-
-
-def build_illustrator_input(ctx: Context, node_input: DetailedItinerary) -> str:
-    return "\n\n".join(
-        [
-            "gemini-3-pro-image を使い、旅行しおりの表紙画像を生成してください。",
-            "画像には目的地の雰囲気、公共交通、温泉、静かな国内旅行の印象を反映してください。",
-            "文字情報を画像内に詰め込みすぎないでください。",
-            "DetailedItinerary:",
-            node_input.model_dump_json(indent=2),
-            "SelectedOptionContext:",
-            text(ctx.state.get(STATE_SELECTED_OPTION_CONTEXT)),
-        ]
-    )
-
-
-planning_workflow = Workflow(
-    name="selected_option_planning_workflow",
-    description="Builds selected option context, detailed itinerary, and bookmark image.",
-    edges=[
-        (
-            "START",
-            build_selected_option_context_node,
-            build_planner_input,
-            planner_agent,
-            store_detailed_itinerary,
-            build_illustrator_input,
-            illustrator_agent,
+def build_planner_input(ctx: Context, node_input: Any) -> str:
+    context = build_selected_option_context(ctx, node_input)
+    evaluation_summaries = []
+    for evaluation in context.evaluations:
+        selected_evaluation = next(
+            (
+                item
+                for item in evaluation.option_evaluations
+                if item.option_id == context.selected_option.option_id
+            ),
+            None,
         )
-    ],
-)
+        evaluation_summaries.append(
+            f"- {evaluation.agent_name}: "
+            f"score={selected_evaluation.score if selected_evaluation else '要確認'}; "
+            f"{selected_evaluation.comment if selected_evaluation else 'comment 要確認'}"
+        )
+
+    recommendation = context.recommendation
+    recommendation_lines = []
+    if recommendation is not None:
+        cautions = ", ".join(recommendation.cautions) if recommendation.cautions else "なし"
+        recommendation_lines = [
+            f"- 推薦順位: {recommendation.rank}",
+            f"- 推薦理由: {recommendation.reason}",
+            f"- 注意点: {cautions}",
+        ]
+
+    return "\n\n".join(
+        [
+            "# Travel request",
+            f"- 元の希望: {context.travel_request.raw_user_query}",
+            f"- 出発地: {context.travel_request.origin or '要確認'}",
+            f"- 期間: {context.travel_request.duration or '要確認'}",
+            f"- 同行者: {context.travel_request.companions or '要確認'}",
+            f"- 予算: {context.travel_request.budget or '要確認'}",
+            f"- 交通手段: {context.travel_request.transport or '要確認'}",
+            f"- 嗜好: {', '.join(context.travel_request.preferences) or '要確認'}",
+            f"- 制約: {', '.join(context.travel_request.constraints) or 'なし'}",
+            f"- 不足情報: {', '.join(context.travel_request.unknowns) or 'なし'}",
+            "# Selected option",
+            f"- ID: {context.selected_option.option_id}",
+            f"- タイトル: {context.selected_option.title}",
+            f"- 目的地: {context.selected_option.destination}",
+            f"- コンセプト: {context.selected_option.concept}",
+            f"- 適合仮説: {context.selected_option.fit_hypothesis}",
+            "# Recommendation notes",
+            "\n".join(recommendation_lines) if recommendation_lines else "- 推薦情報: 要確認",
+            f"- 調整メモ: {context.coordinator_notes}",
+            "# Research report",
+            f"- 目的地概要: {context.research_report.destination_summary}",
+            f"- アクセス: {context.research_report.access}",
+            f"- 概算費用: {context.research_report.estimated_cost}",
+            f"- 宿泊エリア: {context.research_report.lodging_area}",
+            f"- おすすめスポット: {', '.join(context.research_report.recommended_spots)}",
+            f"- 食事候補: {', '.join(context.research_report.food_options)}",
+            f"- リスク: {', '.join(context.research_report.risks)}",
+            f"- 天候・季節メモ: {', '.join(context.research_report.weather_or_season_notes)}",
+            f"- 情報源メモ: {', '.join(context.research_report.source_notes)}",
+            f"- 適合理由: {context.research_report.suitability_reason}",
+            "# Specialist evaluations",
+            "\n".join(evaluation_summaries) if evaluation_summaries else "- なし",
+        ]
+    )
+
+
+def store_itinerary_markdown(ctx: Context, node_input: Any) -> str:
+    markdown = text(node_input)
+    ctx.state[STATE_ITINERARY_MARKDOWN] = markdown
+    return markdown
+
+
+def store_illustrator_prompt(ctx: Context, node_input: Any) -> str:
+    prompt = text(node_input)
+    ctx.state[STATE_ILLUSTRATOR_PROMPT] = prompt
+    return prompt

@@ -130,7 +130,9 @@ The workflow stores these intermediate artifacts in `session.state`:
 - `coordinator_recommendation`: 推薦順位、理由、注意点
 - `selected_option_id`: ユーザーが選んだ候補ID
 - `selected_option_context`: planner に渡す候補限定コンテキスト
-- `detailed_itinerary`: 詳細な1泊2日旅程
+- `itinerary_markdown`: planner が作成した詳細な1泊2日旅程
+- `illustrator_prompt`: 旅しおり表紙画像を生成するための prompt
+- `final_itinerary_presentation`: 旅程 markdown と生成画像をまとめた最終表示用ペイロード
 
 ## Repository Layout
 
@@ -154,7 +156,8 @@ agents/experience/                    RemoteA2aAgent 用 experience specialist
 - `google_search` tool を使う候補別 research agents
 - RemoteA2aAgent による comfort / risk / experience 評価
 - budget / comfort / risk / experience の1ラウンド revision
-- `BuildSelectedOptionContext` FunctionNode
+- planner の markdown 旅程生成と state 保存
+- illustrator prompt writer agent
 - `gemini-3-pro-image` を使う illustrator agent
 
 ## Not Implemented / Stretch Goals

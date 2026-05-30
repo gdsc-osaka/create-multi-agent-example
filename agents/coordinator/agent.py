@@ -21,10 +21,15 @@ from agents.coordinator.intake import (
 from agents.coordinator.recommendation import (
     ROUTE_REPLAN,
     ROUTE_SELECTED,
+    build_planner_input,
     build_replan_input,
-    planning_workflow,
+    illustrator_agent,
+    illustrator_prompt_agent,
+    planner_agent,
     request_user_selection,
     route_user_selection,
+    store_illustrator_prompt,
+    store_itinerary_markdown,
     store_recommendation,
 )
 
@@ -46,9 +51,17 @@ candidate_workflow = Workflow(
         (
             route_user_selection,
             {
-                ROUTE_SELECTED: planning_workflow,
+                ROUTE_SELECTED: build_planner_input,
                 ROUTE_REPLAN: build_replan_input,
             },
+        ),
+        (
+            build_planner_input,
+            planner_agent,
+            store_itinerary_markdown,
+            illustrator_prompt_agent,
+            store_illustrator_prompt,
+            illustrator_agent,
         ),
         (build_replan_input, analyst_agent),
     ],

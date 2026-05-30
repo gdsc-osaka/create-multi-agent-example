@@ -28,10 +28,10 @@ RESEARCH_REPORT_FORMATTER_MODEL = "gemini-3.1-flash-lite"
 strategist_agent = Agent(
     name="strategist",
     model=STRATEGIST_AGENT_MODEL,
-    description="旅行方針と候補地を3から5案作る。",
+    description="旅行方針と候補地を6案作る。",
     output_schema=TravelOptions,
     instruction=(
-        "TravelRequest をもとに、1泊2日の国内旅行候補を3から5案作ってください。"
+        "TravelRequest をもとに、国内旅行候補を6案作ってください。"
         "詳細旅程ではなく、旅行方針、候補地、調査観点を作ります。"
         "option_id は option_1, option_2 のように安定した値にしてください。"
     ),

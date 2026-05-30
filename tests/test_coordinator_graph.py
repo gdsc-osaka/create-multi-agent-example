@@ -7,13 +7,16 @@ from agents.coordinator.intake import STATE_TRAVEL_REQUEST
 from agents.coordinator.recommendation import (
     ROUTE_SELECTED,
     STATE_COORDINATOR_RECOMMENDATION,
+    STATE_ITINERARY_MARKDOWN,
     STATE_SELECTED_OPTION_CONTEXT,
     STATE_SELECTED_OPTION_ID,
     CoordinatorRecommendation,
     RankedOption,
+    build_planner_input,
     build_selected_option_context,
     request_user_selection,
     route_user_selection,
+    store_itinerary_markdown,
 )
 
 
@@ -42,6 +45,20 @@ def test_replan_route_builds_replan_input_before_analysis():
     assert ("build_replan_input", None, "analyst") in edges
 
     assert ("route_user_selection", "replan", "analyst") not in edges
+
+
+def test_candidate_workflow_expands_selected_planning_nodes():
+    edges = edge_set(candidate_workflow)
+
+    assert ("route_user_selection", "selected", "build_planner_input") in edges
+    assert ("build_planner_input", None, "planner") in edges
+    assert ("planner", None, "store_itinerary_markdown") in edges
+    assert ("store_itinerary_markdown", None, "illustrator_prompt_writer") in edges
+    assert ("illustrator_prompt_writer", None, "store_illustrator_prompt") in edges
+    assert ("store_illustrator_prompt", None, "illustrator") in edges
+    assert ("illustrator", None, "present_itinerary_with_image") in edges
+
+    assert ("build_selected_option_context", None, "build_planner_input") not in edges
 
 
 def sample_recommendation():
@@ -139,3 +156,34 @@ def test_build_selected_option_context_allows_empty_evaluation_json():
     assert context.selected_option.option_id == "option_1"
     assert context.evaluations == []
     assert ctx.state[STATE_SELECTED_OPTION_CONTEXT] == context.model_dump()
+
+
+def test_build_planner_input_integrates_selected_option_context_as_markdown():
+    recommendation = sample_recommendation()
+    ctx = SimpleNamespace(
+        state={
+            STATE_TRAVEL_REQUEST: {"raw_user_query": "東京から1泊2日の温泉旅行"},
+            STATE_TRAVEL_OPTIONS: [sample_travel_option()],
+            STATE_RESEARCH_REPORTS: {"option_1": sample_research_report()},
+            STATE_REVISED_EVALUATIONS: "",
+            STATE_COORDINATOR_RECOMMENDATION: recommendation.model_dump(),
+            STATE_SELECTED_OPTION_ID: "option_1",
+        }
+    )
+
+    planner_input = build_planner_input(ctx, None)
+
+    assert planner_input.startswith("# Travel request")
+    assert "# Selected option" in planner_input
+    assert "```json" not in planner_input
+    assert '"selected_option"' not in planner_input
+    assert ctx.state[STATE_SELECTED_OPTION_CONTEXT]["selected_option"]["option_id"] == "option_1"
+
+
+def test_store_itinerary_markdown_saves_planner_output():
+    ctx = SimpleNamespace(state={})
+
+    output = store_itinerary_markdown(ctx, "# 旅程\n\n- 午前: 移動")
+
+    assert output == "# 旅程\n\n- 午前: 移動"
+    assert ctx.state[STATE_ITINERARY_MARKDOWN] == output

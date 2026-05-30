@@ -85,12 +85,7 @@ def request_clarification(ctx: Context, node_input: TravelRequest):
     unknown_text = "\n".join(f"- {unknown}" for unknown in unknowns) or "- 旅行条件の不足"
     message = (
         "旅行候補の精度に影響する情報が不足しています。次の項目に答えてください。\n"
-        f"{unknown_text}\n\n"
-        "選択肢例:\n"
-        "1. 出発地、予算、交通手段をまとめて回答する\n"
-        "2. おすすめ前提で進める\n"
-        "3. 旅行条件を変更する\n"
-        "4. その他"
+        f"{unknown_text}"
     )
     yield RequestInput(
         message=message,
