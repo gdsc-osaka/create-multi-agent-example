@@ -41,7 +41,7 @@ def build_runtime_a2a_agent(adk_agent: BaseAgent, *, description: str) -> A2aAge
         id=f"{adk_agent.name}_skill",
         name=adk_agent.name,
         description=description,
-        tags=["a2a", "hirenest"],
+        tags=["a2a", "travel-planning"],
     )
     agent_card = AgentCard(
         name=adk_agent.name,

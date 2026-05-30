@@ -4,62 +4,75 @@ from google.adk import Workflow
 from google.adk.workflow import DEFAULT_ROUTE
 
 from agents._common import build_a2a_app
-from agents.coordinator.constants import ROUTE_RETRY
-from agents.coordinator.nodes import (
-    account_context_agent,
-    diagnostics_agent,
-    escalation_policy_agent,
-    final_package_agent,
-    incident_status_agent,
-    knowledge_base_agent,
-    parallel_investigation_join,
-    synthesis_hypothesis_agent,
-    ticket_history_agent,
-    triage_planning_agent,
+from agents.coordinator.candidates import (
+    store_travel_options,
+    strategist_agent,
+    travel_research_workflow,
 )
-from agents.coordinator.steps import (
-    build_escalation_policy_input,
-    build_final_package_input,
-    build_retry_planning_input,
-    build_synthesis_input,
-    request_retry_clarification,
-    route_investigation_plan,
+from agents.coordinator.evaluation import evaluation_agent
+from agents.coordinator.intake import (
+    ROUTE_CLARIFY,
+    analyst_agent,
+    build_reanalysis_input,
+    capture_user_query,
+    request_clarification,
+    route_after_analysis,
+)
+from agents.coordinator.recommendation import (
+    ROUTE_REPLAN,
+    ROUTE_SELECTED,
+    build_recommendation_input,
+    build_replan_input,
+    coordinator_agent,
+    planning_workflow,
+    request_user_selection,
+    route_user_selection,
+    store_recommendation,
 )
 
-support_resolution_workflow = Workflow(
-    name="support_case_resolution_workflow",
-    description="Runs parallel investigation through final package generation.",
+candidate_workflow = Workflow(
+    name="travel_candidate_workflow",
+    description="Creates candidates, researches them, evaluates them, and requests user selection.",
     edges=[
-        ("START", account_context_agent, parallel_investigation_join),
-        ("START", ticket_history_agent, parallel_investigation_join),
-        ("START", incident_status_agent, parallel_investigation_join),
-        ("START", knowledge_base_agent, parallel_investigation_join),
-        ("START", diagnostics_agent, parallel_investigation_join),
         (
-            parallel_investigation_join,
-            build_synthesis_input,
-            synthesis_hypothesis_agent,
-            build_escalation_policy_input,
-            escalation_policy_agent,
-            build_final_package_input,
-            final_package_agent,
+            "START",
+            strategist_agent,
+            store_travel_options,
+            travel_research_workflow,
+            evaluation_agent,
+            build_recommendation_input,
+            coordinator_agent,
+            store_recommendation,
+            request_user_selection,
+            route_user_selection,
         ),
+        (
+            route_user_selection,
+            {
+                ROUTE_SELECTED: planning_workflow,
+                ROUTE_REPLAN: build_replan_input,
+            },
+        ),
+        (build_replan_input, analyst_agent),
     ],
 )
 
 root_agent = Workflow(
-    name="support_coordinator_agent",
-    description="Runs the generic Support Case Resolution Workflow over specialist A2A agents.",
+    name="dynamic_travel_planning_agent",
+    description=(
+        "Dynamic Research + Multi-Agent Evaluation 型の国内1泊2日旅行計画AIエージェント。"
+    ),
     edges=[
-        ("START", triage_planning_agent, route_investigation_plan),
+        ("START", capture_user_query, analyst_agent),
         (
-            route_investigation_plan,
+            route_after_analysis,
             {
-                ROUTE_RETRY: request_retry_clarification,
-                DEFAULT_ROUTE: support_resolution_workflow,
+                ROUTE_CLARIFY: request_clarification,
+                DEFAULT_ROUTE: candidate_workflow,
             },
         ),
-        (request_retry_clarification, build_retry_planning_input, triage_planning_agent),
+        (request_clarification, build_reanalysis_input, analyst_agent),
+        (analyst_agent, route_after_analysis),
     ],
 )
 

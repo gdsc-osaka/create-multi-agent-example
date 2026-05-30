@@ -10,17 +10,16 @@ import httpx
 from dotenv import load_dotenv
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-SRC_DIR = REPO_ROOT / "src"
 _CLOUD_TRACE_ENABLED = False
 
 
-def ensure_src_path() -> None:
-    src = str(SRC_DIR)
-    if src not in sys.path:
-        sys.path.insert(0, src)
+def ensure_repo_path() -> None:
+    repo = str(REPO_ROOT)
+    if repo not in sys.path:
+        sys.path.insert(0, repo)
 
 
-ensure_src_path()
+ensure_repo_path()
 load_dotenv(REPO_ROOT / ".env")
 
 
@@ -30,7 +29,7 @@ def env_bool(name: str) -> bool:
 
 def maybe_enable_cloud_trace() -> None:
     global _CLOUD_TRACE_ENABLED
-    if _CLOUD_TRACE_ENABLED or not env_bool("HIRENEST_TRACE_TO_CLOUD"):
+    if _CLOUD_TRACE_ENABLED or not env_bool("TRAVEL_AGENT_TRACE_TO_CLOUD"):
         return
 
     try:
@@ -120,7 +119,7 @@ def build_a2a_app(agent, default_port: int):
                 AgentSkill(
                     id=f"{agent.name}_skill",
                     name=agent.name,
-                    description=agent.description or "Runs the support workflow.",
+                    description=agent.description or "Runs the travel planning workflow.",
                     tags=["adk", "workflow", "a2a"],
                 )
             ],

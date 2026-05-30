@@ -1,180 +1,149 @@
-# HireNest Customer Support Escalation Agent
+# Dynamic Travel Planning Agent
 
-This is the completed repository for the hands-on lab "ADK x A2A x Agent Runtime Customer Support Escalation Agent".
-
-The app models a B2B SaaS support workflow for HireNest ATS, an applicant tracking system for candidate pipelines, public job pages, interview scheduling, scorecards, offers, and recruiting analytics. A Support Coordinator Agent receives a customer support inquiry, runs a generic resolution workflow over specialist agents, and produces a Support Case Resolution Package for support operators.
+ADK 2.0 Graph Workflow と A2A specialist agents を使った「Dynamic Research + Multi-Agent Evaluation 型 旅行計画AIエージェント」です。ユーザーの旅行希望から国内1泊2日の候補を3から5案作り、候補ごとに検索リサーチし、複数観点の評価と1ラウンドの revision を経て、ユーザーが選んだ案だけを詳細旅程と旅しおり画像にします。
 
 ## Architecture
 
 ```text
-Support Coordinator Agent
-  |- Ticket History Agent        (A2A, port 8101)
-  |- Knowledge Base Agent        (A2A, port 8102)
-  |- Account Context Agent       (A2A, port 8103)
-  |- Incident Status Agent       (A2A, port 8104)
-  |- Escalation Policy Agent     (A2A, port 8105)
-  `- Diagnostics Agent           (A2A, port 8107)
+Coordinator Agent (port 8100)
+  |- analyst
+  |- clarification RequestInput (最大2回)
+  |- strategist
+  |- research_agent_1..5 + google_search (fan-out / fan-in)
+  |- budget_agent
+  |- Comfort Agent     (RemoteA2aAgent, port 8101)
+  |- Risk Agent        (RemoteA2aAgent, port 8102)
+  |- Experience Agent  (RemoteA2aAgent, port 8103)
+  |- one-round revision debate
+  |- coordinator recommendation
+  |- user selection RequestInput
+  |- BuildSelectedOptionContext FunctionNode
+  |- planner
+  `- illustrator (gemini-3-pro-image)
 ```
 
-Each specialist is an ADK agent exposed as an A2A Starlette app with `to_a2a()`.
-The coordinator is a graph-based `Workflow` that keeps the case flow generic:
-Triage / Planning, Parallel Investigation, Synthesis / Hypothesis Update,
-Escalation Policy, and Final Package Generation. The planning step returns a
-structured investigation plan, then a Python router emits `retry` or
-`DEFAULT_ROUTE`: `retry` requests clarification with ADK human-in-the-loop input
-before returning to planning, and `DEFAULT_ROUTE` enters the support case
-resolution workflow.
-
-The planning and synthesis steps are LLM agents, so routing and hypothesis
-updates are not hard-coded to candidate email, calendar sync, job pages, or any
-other single domain. The parallel investigation stage fans out to Account
-Context, Ticket History, Incident Status, Knowledge Base, and Diagnostics
-agents; the LLM-provided plan tells each specialist what to focus on for the
-current case. After synthesis, the coordinator calls the Escalation Policy Agent
-over A2A to apply severity, SLA, owner-team, escalation, and Discord
-notification policy. It then combines that policy result with a deterministic
-customer-communication safety draft before passing the package input to the
-final package agent. This keeps the graph focused on the orchestration boundary
-while still making escalation policy a real specialist-agent handoff.
+`research_agent` の結果は会話コンテキストに依存せず、join 後に `session.state["research_reports"]` へ `option_id` keyed dict として保存します。`planner` には State 全体ではなく `session.state["selected_option_context"]` だけを渡します。
 
 ## Setup
 
-Install [uv](https://docs.astral.sh/uv/) if it is not already available.
+Install [uv](https://docs.astral.sh/uv/) first.
 
 ```bash
 make setup
 cp .env.example .env
 ```
 
-Set either `GOOGLE_API_KEY` for Google AI Studio or Agent Platform environment variables in `.env`.
-
-Optional integrations:
+Required environment variables:
 
 ```bash
-# Gemini Enterprise Agent Search / Discovery Engine serving config
-export HIRENEST_AGENT_SEARCH_SERVING_CONFIG="projects/PROJECT/locations/LOCATION/collections/default_collection/engines/ENGINE/servingConfigs/default_config"
+# Google AI Studio
+GOOGLE_API_KEY=...
 
-# Discord escalation notifications; without this the tool returns a dry-run payload
-export HIRENEST_DISCORD_WEBHOOK_URL="YOUR_DISCORD_WEBHOOK_URL"
+# or Vertex AI / Agent Platform
+GOOGLE_GENAI_USE_VERTEXAI=true
+GOOGLE_CLOUD_PROJECT=...
+GOOGLE_CLOUD_LOCATION=us-central1
 ```
 
-Important dependency note: ADK 2.1 requires `a2a-sdk>=0.3,<0.4` for the current A2A helper modules. This repo pins `a2a-sdk[http-server]==0.3.26` so the Starlette A2A server can serve agent cards and JSON-RPC routes.
+Optional environment variables:
 
-Dependencies are managed with `uv` from `pyproject.toml` and `uv.lock`. Do not install them with `pip`; use `make setup` or `uv sync --extra dev`.
+```bash
+ADK_MODEL=gemini-2.5-flash
+ADK_IMAGE_MODEL=gemini-3-pro-image
+COMFORT_A2A_URL=http://localhost:8101
+RISK_A2A_URL=http://localhost:8102
+EXPERIENCE_A2A_URL=http://localhost:8103
+TRAVEL_AGENT_TRACE_TO_CLOUD=true
+```
 
-## Run locally
+## Run
 
-Start the specialists, coordinator, and ADK Web together:
+Start the remote evaluation specialists, coordinator, and ADK Web:
 
 ```bash
 make run
 ```
 
-Or run each service group in separate terminals. First start the local A2A
-specialist services:
+Or run them separately:
 
 ```bash
 make run-specialists
-```
-
-In another terminal, start the coordinator A2A service:
-
-```bash
 make run-coordinator
-```
-
-The agent cards are available at:
-
-```text
-http://localhost:8101/.well-known/agent-card.json
-http://localhost:8102/.well-known/agent-card.json
-http://localhost:8103/.well-known/agent-card.json
-http://localhost:8104/.well-known/agent-card.json
-http://localhost:8105/.well-known/agent-card.json
-http://localhost:8107/.well-known/agent-card.json
-http://localhost:8100/.well-known/agent-card.json
-```
-
-Start ADK Web only:
-
-```bash
 make web
 ```
 
 ADK Web listens on `http://localhost:8000`.
 
-## Test and lint
+Agent cards:
+
+```text
+http://localhost:8100/.well-known/agent-card.json
+http://localhost:8101/.well-known/agent-card.json
+http://localhost:8102/.well-known/agent-card.json
+http://localhost:8103/.well-known/agent-card.json
+```
+
+## Sample Input
+
+```text
+東京から一泊二日で、静かな田舎に行きたいです。公共交通で行けて、温泉があると嬉しいです。予算は3万円以内です。
+```
+
+## State
+
+The workflow stores these intermediate artifacts in `session.state`:
+
+- `raw_user_query`: 元のユーザー入力
+- `travel_request`: analyst が作った `TravelRequest`
+- `clarification_rounds`: RequestInput の実行回数
+- `travel_options`: strategist が作った `TravelOption[]`
+- `research_reports`: `option_id` keyed `ResearchReport` dict
+- `evaluations`: 初回 `EvaluationReport[]`
+- `revised_evaluations`: 1ラウンド debate 後の `EvaluationReport[]`
+- `coordinator_recommendation`: 推薦順位、理由、注意点
+- `selected_option_id`: ユーザーが選んだ候補ID
+- `selected_option_context`: planner に渡す候補限定コンテキスト
+- `detailed_itinerary`: 詳細な1泊2日旅程
+
+## Repository Layout
+
+```text
+agents/coordinator/agent.py           全体の Graph Workflow wiring
+agents/coordinator/intake.py          ユーザー希望の構造化と clarification
+agents/coordinator/candidates.py      候補生成、検索 research fan-out / fan-in
+agents/coordinator/evaluation.py      評価 agent と1ラウンド revision
+agents/coordinator/recommendation.py  推薦、ユーザー選択、詳細旅程、画像生成
+agents/comfort/                       RemoteA2aAgent 用 comfort specialist
+agents/risk/                          RemoteA2aAgent 用 risk specialist
+agents/experience/                    RemoteA2aAgent 用 experience specialist
+```
+
+## Implemented
+
+- ADK Graph Workflow による旅行計画フロー
+- Dynamic Workflow 風の research fan-out / fan-in
+- RequestInput による不足情報確認と候補選択
+- `session.state` への構造化中間成果物保存
+- `google_search` tool を使う候補別 research agents
+- RemoteA2aAgent による comfort / risk / experience 評価
+- budget / comfort / risk / experience の1ラウンド revision
+- `BuildSelectedOptionContext` FunctionNode
+- `gemini-3-pro-image` を使う illustrator agent
+
+## Not Implemented / Stretch Goals
+
+- メール送信
+- 長期 Memory 保存
+- 宿泊予約、交通予約、施設営業日の確定 API 連携
+- 画像生成結果をファイル化して配布用 PDF しおりに組版する処理
+- 候補再提案時の高度な条件差分管理
+
+## Development
 
 ```bash
 make lint
 make test
-```
-
-Refresh the lockfile after dependency changes:
-
-```bash
 make lock
 ```
 
-## Deploy to Agent Platform Agent Runtime
-
-Authenticate with Google Cloud first:
-
-```bash
-gcloud auth application-default login
-gcloud config set project YOUR_PROJECT_ID
-```
-
-Enable the Agent Platform API and Cloud Resource Manager API in the target Google Cloud project.
-
-Then set the required environment variables:
-
-```bash
-export GOOGLE_CLOUD_PROJECT=YOUR_PROJECT_ID
-export GOOGLE_CLOUD_LOCATION=us-central1
-export GOOGLE_GENAI_USE_VERTEXAI=true
-```
-
-`GOOGLE_GENAI_USE_VERTEXAI` is the current google-genai switch for using the Agent Platform backend.
-Set `TRACE_TO_CLOUD=true` or `HIRENEST_TRACE_TO_CLOUD=true` before deployment to enable Cloud Trace.
-
-Deploy every agent:
-
-```bash
-make deploy-all
-```
-
-The deployment script loads defaults from `.env`, exports dependencies from the
-uv lockfile, deploys specialists in parallel, writes authenticated specialist
-A2A card URLs into the coordinator deployment environment, then deploys the
-coordinator:
-
-```bash
-uv export --format requirements.txt --no-dev --no-hashes --no-emit-project \
-  --output-file .agent-runtime-temp/requirements.txt
-```
-
-Agents are deployed from source files with the Agent Runtime API. This source-file deployment path does not require a Cloud Storage staging bucket.
-
-For each deployed agent, `scripts/deploy_all.sh` creates a clean temporary source directory outside the repository with a root `agent.py` that re-exports that agent's `root_agent`. Specialist temporary entrypoints wrap the ADK agent in an A2A Runtime `A2aAgent`; the coordinator temporary entrypoint wraps the ADK workflow in an Agent Runtime `AdkApp`.
-
-After the specialist Agent Runtime resources are created, the script writes their authenticated A2A card URLs into the coordinator deployment environment variables.
-
-Agent2Agent on Agent Runtime is currently a preview workflow. Keep local A2A URLs for workshop development and use runtime endpoints for the deployment exercise.
-
-To clean up deployed Reasoning Engine resources created by this lab, use:
-
-```bash
-./scripts/cleanup_all.sh --dry-run
-./scripts/cleanup_all.sh
-```
-
-## Repository layout
-
-```text
-agents/                  ADK coordinator and specialist agent entrypoints
-data/                    Fictional HireNest ATS tickets, accounts, incidents, KB, product, and policy fixtures
-scripts/                 Agent Runtime deployment and cleanup helpers
-src/hirenest_support/    Deterministic search, policy, diagnostics, communication, and redaction logic
-tests/                   Unit and agent-import tests
-```
+既存の決定論的なサポート業務テスト、`data/`、`src/` は旅行計画エージェント化に伴い削除済みです。
