@@ -8,7 +8,7 @@ from google.adk.agents.remote_a2a_agent import RemoteA2aAgent
 from google.adk.tools.agent_tool import AgentTool
 from google.adk.workflow import node
 
-from agents._common import build_a2a_app, remote_agent_card_url, runtime_a2a_httpx_client
+from agents._common import to_a2a_app, remote_agent_card_url, runtime_a2a_httpx_client
 
 COLLABORATIVE_AGENT_MODEL = "gemini-3.5-flash"
 
@@ -121,4 +121,4 @@ root_agent = Workflow(
     ],
 )
 
-app = build_a2a_app(root_agent, default_port=8110)
+app = to_a2a_app(root_agent, default_port=8110)

@@ -76,6 +76,8 @@ illustrator_prompt_agent = Agent(
         "- 旅程ごとに最適なしおり画像は異なります\n"
         "- 入力された旅程情報を全て配置してください. 省略は禁止です.\n"
         "- この画像を見るだけで旅程と全く同じ旅行ができることが目標です\n"
+        "- text element ごとに適したフォントと太さを選んでください\n"
+        "- デフォルトのフォントは避けてください\n"
         "- 画像のスタイルはこれをそのまま貼ってください: 'flat 2D cel-shaded anime illustration, hand-drawn line art, crisp black outlines, minimal gradients, no realistic skin texture, no 3D rendering, no photorealistic lighting, no glossy highlights, no cinematic color grading'"
         f"- プロンプトは以下のフォーマット例に従ってください\n{IMAGE_PROMPT_FORMAT}"
         

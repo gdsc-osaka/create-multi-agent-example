@@ -62,7 +62,7 @@ def runtime_a2a_httpx_client() -> httpx.AsyncClient | None:
     return httpx.AsyncClient(auth=GoogleCloudAuth(), timeout=httpx.Timeout(timeout=60.0))
 
 
-def build_a2a_app(agent, default_port: int):
+def to_a2a_app(agent, default_port: int):
     from a2a.types import AgentCapabilities, AgentCard, AgentSkill, TransportProtocol
     from google.adk.a2a.utils.agent_to_a2a import to_a2a
 

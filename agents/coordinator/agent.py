@@ -3,7 +3,7 @@ from __future__ import annotations
 from google.adk import Workflow
 from google.adk.workflow import DEFAULT_ROUTE
 
-from agents._common import build_a2a_app
+from agents._common import to_a2a_app
 from agents.coordinator.candidates import (
     store_travel_options,
     strategist_agent,
@@ -86,4 +86,4 @@ root_agent = Workflow(
     ],
 )
 
-app = build_a2a_app(root_agent, default_port=8100)
+app = to_a2a_app(root_agent, default_port=8100)

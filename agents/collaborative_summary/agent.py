@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from google.adk import Agent
 
-from agents._common import build_a2a_app
+from agents._common import to_a2a_app
 
 SUMMARY_AGENT_MODEL = "gemini-3.5-flash"
 
@@ -18,4 +18,4 @@ root_agent = Agent(
     mode="chat",
 )
 
-app = build_a2a_app(root_agent, default_port=8111)
+app = to_a2a_app(root_agent, default_port=8111)

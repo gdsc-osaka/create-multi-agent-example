@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from google.adk import Agent
+import os
 
-from agents._common import build_a2a_app
+from google.adk import Agent
+from google.adk.a2a.utils.agent_to_a2a import to_a2a
 
 COMFORT_AGENT_MODEL = "gemini-3.5-flash"
 
@@ -21,4 +22,9 @@ root_agent = Agent(
     mode="chat",
 )
 
-app = build_a2a_app(root_agent, default_port=8101)
+app = to_a2a(
+    root_agent,
+    host=os.getenv("A2A_HOST", "localhost"),
+    port=int(os.getenv("PORT", "8101")),
+    protocol=os.getenv("A2A_PROTOCOL", "http"),
+)

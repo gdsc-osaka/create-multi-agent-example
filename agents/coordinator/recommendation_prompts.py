@@ -3,7 +3,7 @@ IMAGE_PROMPT_FORMAT = """
   "task": "generate_image",
   "image_type": "travel_itinerary_cover",
   "canvas": {
-    "aspect_ratio": "3:4",
+    "aspect_ratio": "9:16",
   },
   "text_elements": [
     {
