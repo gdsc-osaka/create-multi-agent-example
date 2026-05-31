@@ -9,6 +9,7 @@ from google.adk.events.event import Event
 from google.adk.workflow import DEFAULT_ROUTE
 
 from agents.coordinator.clarify_models import TravelRequest
+from agents.coordinator.memory import personalization_instruction, personalization_tools
 from agents.coordinator.utils import text
 
 __all__ = [
@@ -34,10 +35,12 @@ clarify_agent = Agent(
     instruction=(
         "ユーザーの旅行希望を TravelRequest に構造化してください。"
         "期間、出発地、予算、交通手段、同行者、旅行嗜好、制約を抽出します。"
-        "origin, duration, budget, transport など旅程品質に重大な影響がある情報が"
+        + personalization_instruction()
+        + "origin, duration, budget, transport など旅程品質に重大な影響がある情報が"
         "不明な場合のみ unknowns に入れてください。"
         "推測で補える軽微な項目は unknowns に入れすぎないでください。"
     ),
+    tools=personalization_tools(),
     mode="single_turn",
 )
 

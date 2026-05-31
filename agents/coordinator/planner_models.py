@@ -3,8 +3,8 @@ from __future__ import annotations
 from pydantic import BaseModel, Field
 
 from agents.coordinator.candidates_models import ResearchReport, TravelOption
-from agents.coordinator.evaluation_models import EvaluationReport
 from agents.coordinator.clarify_models import TravelRequest
+from agents.coordinator.evaluation_models import EvaluationReport
 
 
 class RankedOption(BaseModel):

@@ -9,6 +9,7 @@ from google.adk.workflow import node
 
 from agents.coordinator.candidates_models import ResearchReport, TravelOption, TravelOptions
 from agents.coordinator.clarify import STATE_TRAVEL_REQUEST
+from agents.coordinator.memory import personalization_instruction, personalization_tools
 from agents.coordinator.utils import dump, text
 
 __all__ = [
@@ -34,9 +35,11 @@ strategist_agent = Agent(
     output_schema=TravelOptions,
     instruction=(
         "TravelRequest をもとに、旅行候補を6案作ってください。"
-        "詳細旅程ではなく、旅行方針、候補地、調査観点を作ります。"
+        + personalization_instruction()
+        + "詳細旅程ではなく、旅行方針、候補地、調査観点を作ります。"
         "option_id は option_1, option_2 のように安定した値にしてください。"
     ),
+    tools=personalization_tools(),
     mode="single_turn",
 )
 

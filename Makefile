@@ -1,7 +1,10 @@
 UV ?= uv
 UV_RUN := $(UV) run
 
-.PHONY: setup lock lint run run-specialists run-coordinator run-ag-ui deploy-all web clean
+EVAL_SET_ID ?= travel_planning_user_sim
+MEMORY_SERVICE_URI ?= memory://
+
+.PHONY: setup lock lint run run-specialists run-coordinator run-ag-ui deploy-all web web-memory eval-create eval-add-scenarios eval-run clean
 
 setup:
 	$(UV) sync --extra dev
@@ -41,6 +44,18 @@ deploy-all:
 
 web:
 	PYTHONPATH=. $(UV_RUN) adk web agents --port 8000
+
+web-memory:
+	TRAVEL_AGENT_USE_MEMORY=true PYTHONPATH=. $(UV_RUN) adk web agents --port 8000 --memory_service_uri="$(MEMORY_SERVICE_URI)"
+
+eval-create:
+	PYTHONPATH=. $(UV_RUN) adk eval_set create agents/coordinator $(EVAL_SET_ID)
+
+eval-add-scenarios:
+	PYTHONPATH=. $(UV_RUN) adk eval_set add_eval_case agents/coordinator $(EVAL_SET_ID) --scenarios_file evals/travel_scenarios.json --session_input_file evals/session_input.json
+
+eval-run:
+	PYTHONPATH=. $(UV_RUN) adk eval agents/coordinator $(EVAL_SET_ID) --config_file_path evals/eval_config.json --print_detailed_results
 
 clean:
 	rm -rf .venv .ruff_cache .agent-runtime-temp .agent-engine-temp build dist *.egg-info

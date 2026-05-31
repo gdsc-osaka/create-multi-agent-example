@@ -11,13 +11,13 @@ from agents.coordinator.candidates import (
     STATE_RESEARCH_REPORTS,
     STATE_TRAVEL_OPTIONS,
 )
+from agents.coordinator.clarify import STATE_TRAVEL_REQUEST
 from agents.coordinator.evaluation_models import (
     EvaluationReport,
     EvaluationReports,
     OptionEvaluation,
 )
-from agents.coordinator.clarify import STATE_TRAVEL_REQUEST
-from agents.coordinator.recommendation_models import CoordinatorRecommendation
+from agents.coordinator.planner_models import CoordinatorRecommendation
 from agents.coordinator.utils import text
 
 __all__ = [

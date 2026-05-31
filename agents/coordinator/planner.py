@@ -13,6 +13,8 @@ from agents.coordinator.candidates import (
     STATE_TRAVEL_OPTIONS,
 )
 from agents.coordinator.candidates_models import ResearchReport, TravelOption
+from agents.coordinator.clarify import STATE_TRAVEL_REQUEST
+from agents.coordinator.clarify_models import TravelRequest
 from agents.coordinator.evaluation import (
     STATE_REVISED_EVALUATIONS,
 )
@@ -20,8 +22,7 @@ from agents.coordinator.evaluation_models import (
     EvaluationReport,
     EvaluationReports,
 )
-from agents.coordinator.clarify import STATE_TRAVEL_REQUEST
-from agents.coordinator.clarify_models import TravelRequest
+from agents.coordinator.memory import personalization_instruction, personalization_tools
 from agents.coordinator.planner_models import (
     CoordinatorRecommendation,
     RankedOption,
@@ -56,10 +57,12 @@ planner_agent = Agent(
     instruction=(
         "入力: 選択された旅行候補\n"
         "出力: 詳細旅程のmarkdown"
-        "読みやすさを優先し、見出し、箇条書き、時間帯ごとの流れを自然に使います。"
+        + personalization_instruction()
+        + "読みやすさを優先し、見出し、箇条書き、時間帯ごとの流れを自然に使います。"
         "日程には移動、食事、宿泊、雨天代替、注意点を含めてください。"
         "入力にない情報は断定せず「要確認」と書いてください。"
     ),
+    tools=personalization_tools(),
     mode="single_turn",
 )
 

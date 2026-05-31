@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from google.adk import Agent
+from google.adk.agents.context import Context
 
 from agents.coordinator.illustrator_prompts import IMAGE_PROMPT_FORMAT
+from agents.coordinator.utils import text
 
 STATE_ILLUSTRATOR_PROMPT = "illustrator_prompt"
 
@@ -40,3 +42,9 @@ illustrator_agent = Agent(
     instruction="旅しおり画像を生成してください",
     mode="single_turn",
 )
+
+
+def store_illustrator_prompt(ctx: Context, node_input) -> str:
+    prompt = text(node_input)
+    ctx.state[STATE_ILLUSTRATOR_PROMPT] = prompt
+    return prompt

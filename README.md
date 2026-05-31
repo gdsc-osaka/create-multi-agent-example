@@ -19,7 +19,8 @@ Coordinator Agent (port 8100)
   |- BuildSelectedOptionContext FunctionNode
   |- planner
   |- illustrator_prompt_writer
-  `- illustrator
+  |- illustrator
+  `- optional AgentMail sender
 ```
 
 `research_agent` の結果は会話コンテキストに依存せず、join 後に `session.state["research_reports"]` へ `option_id` keyed dict として保存します。`planner` には State 全体ではなく `session.state["selected_option_context"]` だけを渡します。
@@ -38,11 +39,6 @@ Required environment variables:
 ```bash
 # Google AI Studio
 GOOGLE_API_KEY=...
-
-# or Vertex AI / Agent Platform
-GOOGLE_GENAI_USE_VERTEXAI=true
-GOOGLE_CLOUD_PROJECT=...
-GOOGLE_CLOUD_LOCATION=us-central1
 ```
 
 Optional environment variables:
@@ -51,6 +47,9 @@ Optional environment variables:
 COMFORT_A2A_URL=http://localhost:8101
 RISK_A2A_URL=http://localhost:8102
 EXPERIENCE_A2A_URL=http://localhost:8103
+TRAVEL_AGENT_USE_MEMORY=false
+AGENTMAIL_API_KEY=
+TRAVEL_ITINERARY_EMAIL_TO=traveler@example.com
 ```
 
 ## Run
@@ -71,6 +70,18 @@ make web
 
 ADK Web listens on `http://localhost:8000`.
 
+To try the Memory extra locally, start ADK Web with an in-memory memory service:
+
+```bash
+make web-memory
+```
+
+For Vertex AI Memory Bank, pass the Agent Runtime URI:
+
+```bash
+make web-memory MEMORY_SERVICE_URI=agentengine://YOUR_AGENT_ENGINE_ID
+```
+
 AG-UI clients can connect to the coordinator through a separate streaming endpoint:
 
 ```bash
@@ -79,6 +90,11 @@ make run-ag-ui
 
 The AG-UI server listens on `http://localhost:8200` and accepts `POST /ag-ui`
 requests using the Agent User Interaction Protocol event stream format.
+
+To try the AgentMail extra, set `AGENTMAIL_API_KEY` and
+`TRAVEL_ITINERARY_EMAIL_TO` in `.env`. When the final image generation step
+finishes, the coordinator sends the itinerary Markdown and image prompt through
+AgentMail.
 
 Agent cards:
 
@@ -97,7 +113,6 @@ their Agent Runtime A2A card URLs injected:
 ```bash
 export GOOGLE_CLOUD_PROJECT=YOUR_PROJECT_ID
 export GOOGLE_CLOUD_LOCATION=us-central1
-export GOOGLE_GENAI_USE_VERTEXAI=true
 make deploy-all
 ```
 
@@ -129,6 +144,7 @@ The workflow stores these intermediate artifacts in `session.state`:
 - `selected_option_context`: planner に渡す候補限定コンテキスト
 - `itinerary_markdown`: planner が作成した詳細な旅程
 - `illustrator_prompt`: 旅しおり表紙画像を生成するための prompt
+- `agentmail_result`: AgentMail 送信結果
 
 ## Repository Layout
 
@@ -137,7 +153,9 @@ agents/coordinator/agent.py           全体の Graph Workflow wiring
 agents/coordinator/intake.py          ユーザー希望の構造化と clarification
 agents/coordinator/candidates.py      候補生成、検索 research fan-out / fan-in
 agents/coordinator/evaluation.py      RemoteA2aAgent specialist 呼び出しと統合評価
-agents/coordinator/recommendation.py  推薦、ユーザー選択、詳細旅程、画像生成
+agents/coordinator/planner.py         推薦、ユーザー選択、詳細旅程
+agents/coordinator/illustrator.py     画像生成
+agents/coordinator/agentmail.py       AgentMail 送信
 agents/comfort/                       RemoteA2aAgent 用 comfort specialist
 agents/risk/                          RemoteA2aAgent 用 risk specialist
 agents/experience/                    RemoteA2aAgent 用 experience specialist
@@ -156,14 +174,25 @@ agents/experience/                    RemoteA2aAgent 用 experience specialist
 - planner の markdown 旅程生成と state 保存
 - illustrator prompt writer agent
 - `gemini-3-pro-image` を使う illustrator agent
+- optional Memory personalization
+- optional AgentMail itinerary email sender
+- ADK Evaluation / User Simulation starter files under `evals/`
 
 ## Not Implemented / Stretch Goals
 
-- メール送信
-- 長期 Memory 保存
 - 宿泊予約、交通予約、施設営業日の確定 API 連携
 - 画像生成結果をファイル化して配布用 PDF しおりに組版する処理
 - 候補再提案時の高度な条件差分管理
+
+## Evaluation
+
+Create a user simulation eval set, add the sample scenarios, then run it:
+
+```bash
+make eval-create
+make eval-add-scenarios
+make eval-run
+```
 
 ## Development
 
